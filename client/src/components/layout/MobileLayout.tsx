@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Home, FileText, HandCoins, ShieldCheck, Menu, Wallet, Users } from "lucide-react";
+import { Home, FileText, HandCoins, ShieldCheck, Menu, Wallet, Users, Settings } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
 import { CURRENT_USER } from "@/lib/mock-data";
@@ -13,14 +13,14 @@ interface MobileLayoutProps {
 
 export default function MobileLayout({ children, title }: MobileLayoutProps) {
   const [location] = useLocation();
+  const familyName = localStorage.getItem("familyName") || "صندوق العائلة";
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية" },
     { href: "/expenses", icon: Wallet, label: "الإنفاق" },
     { href: "/loans", icon: HandCoins, label: "السلف" },
     { href: "/members", icon: Users, label: "الأعضاء" },
-    { href: "/ledger", icon: FileText, label: "السجل" },
-    { href: "/governance", icon: ShieldCheck, label: "الحوكمة" },
+    { href: "/settings", icon: Settings, label: "الإعدادات" },
   ];
 
   return (
@@ -39,7 +39,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 <img src={logo} alt="Logo" className="w-full h-full object-contain opacity-80" />
              </div>
              <div>
-               <h1 className="text-xl font-bold font-heading text-primary">{title || "صندوق العائلة"}</h1>
+               <h1 className="text-xl font-bold font-heading text-primary">{title || familyName}</h1>
                <div className="flex items-center gap-1.5">
                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                  <p className="text-xs text-muted-foreground font-sans">

@@ -11,6 +11,7 @@ import Loans from "@/pages/loans";
 import Governance from "@/pages/governance";
 import Expenses from "@/pages/expenses";
 import Members from "@/pages/members";
+import FamilySettings from "@/pages/settings";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/governance" component={Governance} />
       <Route path="/expenses" component={Expenses} />
       <Route path="/members" component={Members} />
+      <Route path="/settings" component={FamilySettings} />
       <Route component={NotFound} />
     </Switch>
   );
