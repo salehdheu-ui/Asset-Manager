@@ -12,6 +12,7 @@ import Governance from "@/pages/governance";
 import Expenses from "@/pages/expenses";
 import Members from "@/pages/members";
 import FamilySettings from "@/pages/settings";
+import PaymentList from "@/pages/payments";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/expenses" component={Expenses} />
       <Route path="/members" component={Members} />
       <Route path="/settings" component={FamilySettings} />
+      <Route path="/payments" component={PaymentList} />
       <Route component={NotFound} />
     </Switch>
   );
