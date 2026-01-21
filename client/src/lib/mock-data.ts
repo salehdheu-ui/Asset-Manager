@@ -33,16 +33,11 @@ export const CURRENT_USER: FamilyMember = {
   name: 'أحمد السعيدي',
   role: 'guardian',
   avatar: 'AH',
-  contributionStatus: 'paid',
-  lastContribution: '2024-05-01'
+  contributionStatus: 'pending',
 };
 
 export const FAMILY_MEMBERS: FamilyMember[] = [
-  { id: '1', name: 'أحمد السعيدي', role: 'guardian', avatar: 'AH', contributionStatus: 'paid', lastContribution: '2024-05-01' },
-  { id: '2', name: 'فاطمة السعيدي', role: 'member', avatar: 'FS', contributionStatus: 'pending' },
-  { id: '3', name: 'علي السعيدي', role: 'member', avatar: 'AS', contributionStatus: 'paid', lastContribution: '2024-05-05' },
-  { id: '4', name: 'ليلى السعيدي', role: 'member', avatar: 'LS', contributionStatus: 'pending' },
-  { id: '5', name: 'سلطان السعيدي', role: 'custodian', avatar: 'SS', contributionStatus: 'paid', lastContribution: '2024-05-02' },
+  { id: '1', name: 'أحمد السعيدي', role: 'guardian', avatar: 'AH', contributionStatus: 'pending' },
 ];
 
 export const FUND_LAYERS: FundLayer[] = [
@@ -51,7 +46,7 @@ export const FUND_LAYERS: FundLayer[] = [
     name: 'Protected Capital',
     arabicName: 'رأس المال المحمي',
     percentage: 50,
-    amount: 50000,
+    amount: 0,
     description: 'أساس ثروة العائلة الذي لا يمس.',
     color: 'bg-primary',
     locked: true
@@ -61,7 +56,7 @@ export const FUND_LAYERS: FundLayer[] = [
     name: 'Emergency Reserve',
     arabicName: 'احتياطي الطوارئ',
     percentage: 20,
-    amount: 20000,
+    amount: 0,
     description: 'للأزمات العائلية غير المتوقعة.',
     color: 'bg-amber-600',
     locked: true
@@ -71,7 +66,7 @@ export const FUND_LAYERS: FundLayer[] = [
     name: 'Flexible Capital',
     arabicName: 'رأس المال المرن',
     percentage: 20,
-    amount: 20000,
+    amount: 0,
     description: 'للسلف والمصروفات والعمل الخيري.',
     color: 'bg-emerald-500',
     locked: false
@@ -81,39 +76,11 @@ export const FUND_LAYERS: FundLayer[] = [
     name: 'Growth Capital',
     arabicName: 'رأس مال النمو',
     percentage: 10,
-    amount: 10000,
+    amount: 0,
     description: 'مقفل حتى الوصول لخط الأمان.',
     color: 'bg-blue-600',
     locked: true
   }
 ];
 
-export const TRUST_LEDGER: LedgerEntry[] = [
-  {
-    id: 'L-1026',
-    date: '2024-05-22 09:00',
-    type: 'contribution',
-    description: 'إيداع المساهمة الشهرية',
-    actor: 'سلطان السعيدي',
-    amount: 100,
-    hash: '0x2d...8b4'
-  },
-  {
-    id: 'L-1025',
-    date: '2024-05-20 10:00',
-    type: 'zakat',
-    description: 'دفع الزكاة السنوية',
-    actor: 'أحمد السعيدي',
-    amount: 1250,
-    hash: '0x1c...9a2'
-  },
-  {
-    id: 'L-1024',
-    date: '2024-05-18 16:45',
-    type: 'charity',
-    description: 'مساهمة خيرية (كفالة أيتام)',
-    actor: 'فاطمة السعيدي',
-    amount: 200,
-    hash: '0x4e...3b1'
-  }
-];
+export const TRUST_LEDGER: LedgerEntry[] = [];
