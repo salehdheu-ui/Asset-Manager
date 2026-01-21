@@ -9,6 +9,7 @@ import Auth from "@/pages/auth";
 import Ledger from "@/pages/ledger";
 import Loans from "@/pages/loans";
 import Governance from "@/pages/governance";
+import Expenses from "@/pages/expenses";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/ledger" component={Ledger} />
       <Route path="/loans" component={Loans} />
       <Route path="/governance" component={Governance} />
+      <Route path="/expenses" component={Expenses} />
       <Route component={NotFound} />
     </Switch>
   );

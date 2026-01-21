@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Home, FileText, HandCoins, ShieldCheck, Menu, User } from "lucide-react";
+import { Home, FileText, HandCoins, ShieldCheck, Menu, Wallet } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
 import { CURRENT_USER } from "@/lib/mock-data";
@@ -16,6 +16,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية" },
+    { href: "/expenses", icon: Wallet, label: "الإنفاق" },
     { href: "/loans", icon: HandCoins, label: "السلف" },
     { href: "/ledger", icon: FileText, label: "السجل" },
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة" },
@@ -60,7 +61,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/80 backdrop-blur-md border-t border-border/40 z-50 pb-6 pt-2 px-6">
-        <ul className="flex justify-between items-center">
+        <ul className="flex justify-around items-center">
           {navItems.map((item) => {
             const isActive = location === item.href;
             return (
@@ -70,8 +71,8 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                     "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300",
                     isActive ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-primary/70"
                   )}>
-                    <item.icon className={cn("w-6 h-6", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 1.5} />
-                    <span className="text-[10px] font-medium">{item.label}</span>
+                    <item.icon className={cn("w-5 h-5", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 1.5} />
+                    <span className="text-[9px] font-medium">{item.label}</span>
                   </a>
                 </Link>
               </li>

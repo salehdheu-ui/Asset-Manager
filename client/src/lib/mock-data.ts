@@ -19,11 +19,11 @@ export interface FundLayer {
 export interface LedgerEntry {
   id: string;
   date: string;
-  type: 'access' | 'change' | 'transaction' | 'alert';
+  type: 'access' | 'change' | 'transaction' | 'alert' | 'expense' | 'zakat' | 'charity';
   description: string;
   actor: string;
   amount?: number;
-  hash: string; // Fake hash for trust
+  hash: string;
 }
 
 export const CURRENT_USER: FamilyMember = {
@@ -40,7 +40,7 @@ export const FUND_LAYERS: FundLayer[] = [
     arabicName: 'رأس المال المحمي',
     percentage: 50,
     amount: 50000,
-    description: 'Untouchable wealth foundation.',
+    description: 'أساس ثروة العائلة الذي لا يمس.',
     color: 'bg-primary',
     locked: true
   },
@@ -50,7 +50,7 @@ export const FUND_LAYERS: FundLayer[] = [
     arabicName: 'احتياطي الطوارئ',
     percentage: 20,
     amount: 20000,
-    description: 'For unforeseen family crises.',
+    description: 'للأزمات العائلية غير المتوقعة.',
     color: 'bg-amber-600',
     locked: true
   },
@@ -60,7 +60,7 @@ export const FUND_LAYERS: FundLayer[] = [
     arabicName: 'رأس المال المرن',
     percentage: 20,
     amount: 20000,
-    description: 'For active loans and support.',
+    description: 'للسلف والمصروفات والعمل الخيري.',
     color: 'bg-emerald-500',
     locked: false
   },
@@ -70,7 +70,7 @@ export const FUND_LAYERS: FundLayer[] = [
     arabicName: 'رأس مال النمو',
     percentage: 10,
     amount: 10000,
-    description: 'Locked until safety line reached.',
+    description: 'مقفل حتى الوصول لخط الأمان.',
     color: 'bg-blue-600',
     locked: true
   }
@@ -78,28 +78,29 @@ export const FUND_LAYERS: FundLayer[] = [
 
 export const TRUST_LEDGER: LedgerEntry[] = [
   {
+    id: 'L-1025',
+    date: '2024-05-20 10:00',
+    type: 'zakat',
+    description: 'دفع الزكاة السنوية',
+    actor: 'Ahmed Al-Saidi',
+    amount: 1250,
+    hash: '0x1c...9a2'
+  },
+  {
+    id: 'L-1024',
+    date: '2024-05-18 16:45',
+    type: 'charity',
+    description: 'مساهمة خيرية (كفالة أيتام)',
+    actor: 'Fatima Al-Saidi',
+    amount: 200,
+    hash: '0x4e...3b1'
+  },
+  {
     id: 'L-1023',
     date: '2024-05-15 14:30',
     type: 'access',
     description: 'Guardian Login Verified',
     actor: 'Ahmed Al-Saidi',
     hash: '0x8f...2a1'
-  },
-  {
-    id: 'L-1022',
-    date: '2024-05-14 09:15',
-    type: 'transaction',
-    description: 'Monthly Contribution Received',
-    actor: 'System',
-    amount: 500,
-    hash: '0x7b...9c3'
-  },
-  {
-    id: 'L-1021',
-    date: '2024-05-10 18:45',
-    type: 'change',
-    description: 'Emergency Mode Deactivated',
-    actor: 'Fatima Al-Saidi',
-    hash: '0x3d...1e4'
   }
 ];
