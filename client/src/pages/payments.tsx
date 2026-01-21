@@ -3,19 +3,17 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import { FAMILY_MEMBERS as INITIAL_MEMBERS, FamilyMember } from "@/lib/mock-data";
 import { 
   Calendar, 
-  AlertCircle, 
+  ChevronLeft, 
+  ChevronRight, 
   CheckCircle2, 
   Clock, 
   Edit3, 
-  Bell, 
   DollarSign,
-  TrendingDown,
-  Info,
-  Upload,
-  Image as ImageIcon,
-  X
+  Search,
+  History,
+  Info
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -27,261 +25,183 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-interface ArrearsMember extends FamilyMember {
-  monthlyAmount: number;
-  arrears: number;
-  proofImage?: string;
+interface YearlyContribution {
+  [year: number]: {
+    [month: number]: number; // 1 to 12
+  };
 }
 
-export default function PaymentList() {
+interface PaymentMember extends FamilyMember {
+  contributions: YearlyContribution;
+}
+
+export default function YearlyPaymentMatrix() {
   const { toast } = useToast();
-  const [members, setMembers] = useState<ArrearsMember[]>(() => {
-    const saved = localStorage.getItem("paymentMembers");
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [members, setMembers] = useState<PaymentMember[]>(() => {
+    const saved = localStorage.getItem("paymentMatrix");
     if (saved) return JSON.parse(saved);
     return INITIAL_MEMBERS.map(m => ({
       ...m,
-      monthlyAmount: 100,
-      arrears: m.contributionStatus === 'pending' ? 100 : 0
+      contributions: {
+        [currentYear]: {}
+      }
     }));
   });
 
-  const [selectedProof, setSelectedProof] = useState<string | null>(null);
-
   useEffect(() => {
-    localStorage.setItem("paymentMembers", JSON.stringify(members));
+    localStorage.setItem("paymentMatrix", JSON.stringify(members));
   }, [members]);
 
-  const updateMonthlyAmount = (id: string, amount: number) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, monthlyAmount: amount } : m));
-    toast({ title: "تم تحديث مبلغ المساهمة" });
+  const months = [
+    { id: 1, name: "يناير" }, { id: 2, name: "فبراير" }, { id: 3, name: "مارس" },
+    { id: 4, name: "أبريل" }, { id: 5, name: "مايو" }, { id: 6, name: "يونيو" },
+    { id: 7, name: "يوليو" }, { id: 8, name: "أغسطس" }, { id: 9, name: "سبتمبر" },
+    { id: 10, name: "أكتوبر" }, { id: 11, name: "نوفمبر" }, { id: 12, name: "ديسمبر" }
+  ];
+
+  const updatePayment = (memberId: string, year: number, month: number, amount: number) => {
+    setMembers(prev => prev.map(m => {
+      if (m.id === memberId) {
+        const newContributions = { ...m.contributions };
+        if (!newContributions[year]) newContributions[year] = {};
+        newContributions[year][month] = amount;
+        return { ...m, contributions: newContributions };
+      }
+      return m;
+    }));
+    toast({ title: `تم تحديث مبلغ شهر ${month} لعام ${year}` });
   };
 
-  const markAsPaid = (id: string, proof?: string) => {
-    setMembers(prev => prev.map(m => 
-      m.id === id ? { ...m, contributionStatus: 'paid', arrears: 0, proofImage: proof || m.proofImage } : m
-    ));
-    toast({ title: "تم تسجيل الدفع بنجاح" });
-  };
-
-  const handleFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setMembers(prev => prev.map(m => m.id === id ? { ...m, proofImage: base64String } : m));
-        toast({ title: "تم رفع إثبات الدفع بنجاح" });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const today = new Date();
-  const isAfter20th = today.getDate() >= 20;
+  const years = Array.from({ length: currentYear - 2000 + 5 }, (_, i) => 2000 + i);
 
   return (
-    <MobileLayout title="قائمة الدفع الدوري">
-      <div className="space-y-6 pt-2">
+    <MobileLayout title="سجل المساهمات السنوي">
+      <div className="space-y-6 pt-2 pb-12">
         
-        {/* Reminder Alert */}
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn(
-            "p-4 rounded-2xl border flex items-start gap-3",
-            isAfter20th ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-blue-50 border-blue-200 text-blue-800"
-          )}
-        >
-          <Bell className={cn("w-5 h-5 shrink-0 mt-0.5", isAfter20th && "animate-bounce")} />
-          <div className="text-xs leading-relaxed">
-            <p className="font-bold mb-1">تذكير الدفع الشهري</p>
-            {isAfter20th 
-              ? "نحن الآن بعد تاريخ 20 من الشهر. يرجى التأكد من تحصيل جميع المساهمات لتجنب المتأخرات."
-              : "يصل تذكير الدفع لجميع الأعضاء في تاريخ 20 من كل شهر ميلادي."}
+        {/* Year Selector */}
+        <div className="flex items-center justify-between bg-card border border-border rounded-2xl p-4 shadow-sm">
+          <button 
+            onClick={() => setSelectedYear(prev => prev - 1)}
+            className="p-2 hover:bg-muted rounded-full transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          
+          <div className="flex flex-col items-center">
+            <span className="text-xs text-muted-foreground">عرض سنة</span>
+            <select 
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-transparent font-bold text-xl font-mono focus:outline-none appearance-none text-center cursor-pointer"
+            >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
-        </motion.div>
 
-        {/* Arrears Summary */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-            <p className="text-[10px] text-muted-foreground mb-1">إجمالي المحصل</p>
-            <h4 className="text-xl font-bold font-mono text-primary">
-              {members.filter(m => m.contributionStatus === 'paid').length * 100} <span className="text-[10px]">OZR</span>
-            </h4>
-          </div>
-          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-            <p className="text-[10px] text-muted-foreground mb-1">إجمالي المتأخرات</p>
-            <h4 className="text-xl font-bold font-mono text-destructive">
-              {members.reduce((acc, m) => acc + m.arrears, 0)} <span className="text-[10px]">OZR</span>
-            </h4>
-          </div>
+          <button 
+            onClick={() => setSelectedYear(prev => prev + 1)}
+            className="p-2 hover:bg-muted rounded-full transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Payment Management List */}
-        <div className="space-y-4">
-          <h3 className="font-bold text-lg text-primary px-1">حالة دفع الأعضاء</h3>
-          <div className="grid gap-3">
-            {members.map((member, idx) => (
-              <motion.div
-                key={member.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="bg-card border border-border rounded-2xl p-4 shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-primary border border-primary/10">
-                      {member.avatar}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm">{member.name}</h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {member.contributionStatus === 'paid' ? (
-                          <span className="text-[9px] text-emerald-600 flex items-center gap-1 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" /> تم الدفع
-                          </span>
-                        ) : (
-                          <span className="text-[9px] text-amber-600 flex items-center gap-1 font-medium bg-amber-50 px-1.5 py-0.5 rounded-full">
-                            <Clock className="w-3 h-3" /> بانتظار الدفع
-                          </span>
-                        )}
-                        {member.arrears > 0 && (
-                          <span className="text-[9px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full font-bold">
-                            متأخرات: {member.arrears}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+        {/* Matrix View */}
+        <div className="space-y-6">
+          {members.map((member, mIdx) => (
+            <motion.div 
+              key={member.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: mIdx * 0.05 }}
+              className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm"
+            >
+              {/* Member Header */}
+              <div className="p-4 bg-primary/5 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border border-primary/20">
+                    {member.avatar}
                   </div>
-                  
-                  <div className="flex items-center gap-1">
-                    {member.proofImage && (
-                      <button 
-                        onClick={() => setSelectedProof(member.proofImage!)}
-                        className="p-2 text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        title="عرض إثبات الدفع"
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                    <Dialog>
+                  <div>
+                    <h4 className="font-bold text-sm">{member.name}</h4>
+                    <p className="text-[10px] text-muted-foreground">إجمالي {selectedYear}: {
+                      Object.values(member.contributions[selectedYear] || {}).reduce((a, b) => a + b, 0)
+                    } OZR</p>
+                  </div>
+                </div>
+                <History className="w-4 h-4 text-primary/40" />
+              </div>
+
+              {/* Months Grid */}
+              <div className="grid grid-cols-4 gap-px bg-border/40">
+                {months.map((month) => {
+                  const paidAmount = member.contributions[selectedYear]?.[month.id] || 0;
+                  return (
+                    <Dialog key={month.id}>
                       <DialogTrigger asChild>
-                        <button className="p-2 hover:bg-muted/50 rounded-lg transition-colors">
-                          <Edit3 className="w-4 h-4 text-primary" />
+                        <button className={cn(
+                          "flex flex-col items-center justify-center p-3 gap-1 transition-colors relative group bg-card hover:bg-muted/50",
+                          paidAmount > 0 ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          <span className="text-[10px] font-medium">{month.name}</span>
+                          <span className="text-xs font-mono font-bold">
+                            {paidAmount > 0 ? paidAmount : "---"}
+                          </span>
+                          {paidAmount > 0 && (
+                            <div className="absolute top-1 left-1">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                            </div>
+                          )}
                         </button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md font-sans" dir="rtl">
                         <DialogHeader>
-                          <DialogTitle className="font-heading text-xl">تعديل المساهمة: {member.name}</DialogTitle>
-                          <DialogDescription>تعديل مبلغ المساهمة الشهرية وتوثيق الدفع</DialogDescription>
+                          <DialogTitle className="font-heading text-xl">تعديل مساهمة {month.name}</DialogTitle>
+                          <DialogDescription>العضو: {member.name} - سنة {selectedYear}</DialogDescription>
                         </DialogHeader>
-                        <div className="py-6 space-y-6">
+                        <div className="py-6 space-y-4">
                           <div className="space-y-2">
-                            <label className="text-sm font-medium">المبلغ الشهري (OZR)</label>
-                            <input 
-                              type="number" 
-                              value={member.monthlyAmount}
-                              onChange={(e) => updateMonthlyAmount(member.id, Number(e.target.value))}
-                              className="w-full text-2xl font-mono p-3 border rounded-xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium block">إثبات الدفع (صورة التحويل)</label>
+                            <label className="text-sm font-medium block">المبلغ المدفوع (OZR)</label>
                             <div className="relative">
-                              <input 
-                                type="file" 
-                                accept="image/*"
-                                onChange={(e) => handleFileUpload(member.id, e)}
-                                className="hidden" 
-                                id={`file-${member.id}`}
+                               <input 
+                                type="number" 
+                                defaultValue={paidAmount || 100}
+                                id={`amount-${member.id}-${month.id}`}
+                                className="w-full text-3xl font-mono p-4 border rounded-2xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 
+                                placeholder="0"
                               />
-                              <label 
-                                htmlFor={`file-${member.id}`}
-                                className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
-                              >
-                                {member.proofImage ? (
-                                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
-                                    <img src={member.proofImage} className="w-full h-full object-cover" alt="Proof" />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                      <Upload className="w-6 h-6 text-white" />
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Upload className="w-8 h-8 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground">اضغط لرفع صورة التحويل</span>
-                                  </>
-                                )}
-                              </label>
+                              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-6 h-6" />
                             </div>
                           </div>
-
-                          <div className="bg-destructive/5 p-4 rounded-xl border border-destructive/10">
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-destructive font-bold">المتأخرات الحالية:</span>
-                              <span className="font-mono font-bold text-lg">{member.arrears} OZR</span>
-                            </div>
+                          <div className="bg-muted/30 p-4 rounded-xl text-xs text-center">
+                            يمكنك دفع مبالغ متقدمة أو تسوية متأخرات سابقة من هنا.
                           </div>
                         </div>
-                        <div className="flex gap-3">
-                          <button 
-                            onClick={() => markAsPaid(member.id)}
-                            className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors"
-                          >
-                            تسجيل كـ "تم الدفع"
-                          </button>
-                        </div>
+                        <button 
+                          onClick={() => {
+                            const val = (document.getElementById(`amount-${member.id}-${month.id}`) as HTMLInputElement).value;
+                            updatePayment(member.id, selectedYear, month.id, Number(val));
+                          }}
+                          className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-lg"
+                        >
+                          حفظ وتوثيق المساهمة
+                        </button>
                       </DialogContent>
                     </Dialog>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-2">
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="w-3 h-3" />
-                    <span>المبلغ الشهري: {member.monthlyAmount} OZR</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>آخر دفع: {member.lastContribution || "---"}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Proof Preview Modal */}
-        <AnimatePresence>
-          {selectedProof && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-6"
-              onClick={() => setSelectedProof(null)}
-            >
-              <button className="absolute top-6 right-6 text-white p-2">
-                <X className="w-8 h-8" />
-              </button>
-              <motion.img 
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                src={selectedProof} 
-                className="max-w-full max-h-full rounded-lg shadow-2xl" 
-                alt="Proof Full Preview"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="bg-muted/30 p-4 rounded-2xl flex items-start gap-3">
-          <Info className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            ملاحظة: النظام يقوم آلياً باحتساب المتأخرات في حال عدم تسجيل الدفع قبل نهاية الشهر. يتم إرسال إشعار لكافة الأعضاء في يوم 20 من كل شهر.
+        {/* Legend/Info */}
+        <div className="bg-card border border-border rounded-2xl p-4 flex items-start gap-3">
+          <Info className="w-5 h-5 text-primary shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            تتيح هذه الواجهة عرض المساهمات لكافة الأعضاء موزعة على أشهر السنة. يمكنك العودة للأعوام السابقة (منذ 2000) لمراجعة الأرشيف المالي أو إضافة مبالغ متقدمة للسنة القادمة.
           </p>
         </div>
       </div>
