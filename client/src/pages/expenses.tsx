@@ -49,7 +49,7 @@ export default function Expenses() {
           <div className="col-span-2 bg-card border border-border rounded-2xl p-4 flex justify-between items-center shadow-sm">
             <div>
               <p className="text-xs text-muted-foreground">الرصيد القابل للإنفاق</p>
-              <h3 className="text-2xl font-bold font-mono text-primary">8,540 OZR</h3>
+              <h3 className="text-2xl font-bold font-mono text-primary">8,540 ر.ع</h3>
             </div>
             <TrendingDown className="text-primary/20 w-12 h-12" />
           </div>
@@ -87,7 +87,7 @@ export default function Expenses() {
                 </DialogHeader>
                 <div className="py-4 space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">المبلغ (OZR)</label>
+                    <label className="text-sm font-medium mb-2 block">المبلغ (ر.ع)</label>
                     <input 
                       type="number" 
                       className="w-full text-2xl font-mono p-3 border rounded-xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 

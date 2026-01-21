@@ -40,7 +40,7 @@ export default function TrustLedgerItem({ entry }: TrustLedgerItemProps) {
            </span>
            {entry.amount && (
              <span className="text-xs font-bold text-emerald-600">
-               +{entry.amount} OZR
+               +{entry.amount} ر.ع
              </span>
            )}
         </div>

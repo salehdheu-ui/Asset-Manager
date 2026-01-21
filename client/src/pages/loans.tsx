@@ -22,7 +22,7 @@ export default function Loans() {
       id: 'urgent',
       title: 'سلفة عاجلة',
       description: 'للمتطلبات السريعة والبسيطة.',
-      maxAmount: '3% من الصندوق',
+      maxAmount: '10% من الصندوق',
       color: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       icon: Clock,
       features: ['موافقة فورية', 'مراجعة بعد 30 يوم', 'من رأس المال المرن']
@@ -31,7 +31,7 @@ export default function Loans() {
       id: 'standard',
       title: 'سلفة غير عاجلة',
       description: 'للمشاريع الشخصية أو التحسينات.',
-      maxAmount: '6% من الصندوق',
+      maxAmount: '10% من الصندوق',
       color: 'bg-blue-50 border-blue-200 text-blue-800',
       icon: HandCoins,
       features: ['فترة تفكير 48 ساعة', 'تصويت العائلة', 'خطة سداد ميسرة']
@@ -40,7 +40,7 @@ export default function Loans() {
       id: 'emergency',
       title: 'قرض طارئ',
       description: 'للأزمات الصحية أو الكوارث فقط.',
-      maxAmount: '8% من الصندوق',
+      maxAmount: '20% من الصندوق',
       color: 'bg-amber-50 border-amber-200 text-amber-800',
       icon: AlertCircle,
       features: ['موافقة الوصي فقط', 'من احتياطي الطوارئ', 'تسجيل فوري']
@@ -53,7 +53,7 @@ export default function Loans() {
         <div className="bg-primary text-primary-foreground p-6 rounded-2xl relative overflow-hidden">
           <div className="relative z-10">
             <h2 className="text-2xl font-bold mb-1">المتاح للإقراض</h2>
-            <p className="text-3xl font-mono font-bold tracking-tight">15,400 <span className="text-sm font-sans font-normal opacity-80">OZR</span></p>
+            <p className="text-3xl font-mono font-bold tracking-tight">15,400 <span className="text-sm font-sans font-normal opacity-80">ر.ع</span></p>
             <p className="text-xs opacity-70 mt-2">من رأس المال المرن فقط</p>
           </div>
           <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-white/10 rounded-full blur-2xl" />
@@ -101,7 +101,7 @@ export default function Loans() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
-                    <label className="text-sm font-medium mb-2 block">المبلغ المطلوب (OZR)</label>
+                    <label className="text-sm font-medium mb-2 block">المبلغ المطلوب (ر.ع)</label>
                     <input 
                       type="number" 
                       className="w-full text-2xl font-mono p-3 border rounded-xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 

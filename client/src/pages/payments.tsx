@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   Clock, 
   Edit3, 
-  DollarSign,
   Search,
   History,
   Info
@@ -128,7 +127,7 @@ export default function YearlyPaymentMatrix() {
                     <h4 className="font-bold text-sm">{member.name}</h4>
                     <p className="text-[10px] text-muted-foreground">إجمالي {selectedYear}: {
                       Object.values(member.contributions[selectedYear] || {}).reduce((a, b) => a + b, 0)
-                    } OZR</p>
+                    } ر.ع</p>
                   </div>
                 </div>
                 <History className="w-4 h-4 text-primary/40" />
@@ -163,7 +162,7 @@ export default function YearlyPaymentMatrix() {
                         </DialogHeader>
                         <div className="py-6 space-y-4">
                           <div className="space-y-2">
-                            <label className="text-sm font-medium block">المبلغ المدفوع (OZR)</label>
+                            <label className="text-sm font-medium block">المبلغ المدفوع (ر.ع)</label>
                             <div className="relative">
                                <input 
                                 type="number" 
@@ -172,7 +171,7 @@ export default function YearlyPaymentMatrix() {
                                 className="w-full text-3xl font-mono p-4 border rounded-2xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 
                                 placeholder="0"
                               />
-                              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-6 h-6" />
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">ر.ع</div>
                             </div>
                           </div>
                           <div className="bg-muted/30 p-4 rounded-xl text-xs text-center">

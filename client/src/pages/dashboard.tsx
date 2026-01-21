@@ -19,7 +19,7 @@ export default function Dashboard() {
         >
           <p className="text-sm text-muted-foreground">إجمالي أصول الصندوق</p>
           <h2 className="text-4xl font-bold font-mono text-primary tracking-tighter">
-            {totalCapital.toLocaleString()} <span className="text-lg text-muted-foreground font-sans">OZR</span>
+            {totalCapital.toLocaleString()} <span className="text-lg text-muted-foreground font-sans">ر.ع</span>
           </h2>
           <div className="flex items-center justify-center gap-2 mt-2">
             <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 text-xs font-medium flex items-center gap-1">
@@ -39,7 +39,7 @@ export default function Dashboard() {
           <div>
              <h4 className="text-sm font-bold text-amber-800">تذكير خط الأمان</h4>
              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-               رأس مال النمو مقفل حتى يصل الصندوق إلى 120,000 OZR. التركيز الحالي على الحفاظ والتماسك.
+               رأس مال النمو مقفل حتى يصل الصندوق إلى 120,000 ر.ع. التركيز الحالي على الحفاظ والتماسك.
              </p>
           </div>
         </div>

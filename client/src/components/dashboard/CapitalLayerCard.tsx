@@ -33,7 +33,7 @@ export default function CapitalLayerCard({ layer, delay = 0 }: CapitalLayerCardP
 
       <div className="space-y-1 mb-4">
         <div className="text-3xl font-bold font-mono tracking-tight text-primary">
-          {layer.amount.toLocaleString()} <span className="text-sm font-sans font-normal text-muted-foreground">OZR</span>
+          {layer.amount.toLocaleString()} <span className="text-sm font-sans font-normal text-muted-foreground">ر.ع</span>
         </div>
         <div className="text-xs text-muted-foreground">{layer.description}</div>
       </div>
