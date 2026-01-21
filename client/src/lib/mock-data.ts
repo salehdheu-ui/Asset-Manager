@@ -3,6 +3,8 @@ export interface FamilyMember {
   name: string;
   role: 'guardian' | 'custodian' | 'member';
   avatar: string;
+  contributionStatus: 'paid' | 'pending';
+  lastContribution?: string;
 }
 
 export interface FundLayer {
@@ -19,7 +21,7 @@ export interface FundLayer {
 export interface LedgerEntry {
   id: string;
   date: string;
-  type: 'access' | 'change' | 'transaction' | 'alert' | 'expense' | 'zakat' | 'charity';
+  type: 'access' | 'change' | 'transaction' | 'alert' | 'expense' | 'zakat' | 'charity' | 'contribution';
   description: string;
   actor: string;
   amount?: number;
@@ -28,10 +30,20 @@ export interface LedgerEntry {
 
 export const CURRENT_USER: FamilyMember = {
   id: '1',
-  name: 'Ahmed Al-Saidi',
+  name: 'أحمد السعيدي',
   role: 'guardian',
-  avatar: 'AH'
+  avatar: 'AH',
+  contributionStatus: 'paid',
+  lastContribution: '2024-05-01'
 };
+
+export const FAMILY_MEMBERS: FamilyMember[] = [
+  { id: '1', name: 'أحمد السعيدي', role: 'guardian', avatar: 'AH', contributionStatus: 'paid', lastContribution: '2024-05-01' },
+  { id: '2', name: 'فاطمة السعيدي', role: 'member', avatar: 'FS', contributionStatus: 'pending' },
+  { id: '3', name: 'علي السعيدي', role: 'member', avatar: 'AS', contributionStatus: 'paid', lastContribution: '2024-05-05' },
+  { id: '4', name: 'ليلى السعيدي', role: 'member', avatar: 'LS', contributionStatus: 'pending' },
+  { id: '5', name: 'سلطان السعيدي', role: 'custodian', avatar: 'SS', contributionStatus: 'paid', lastContribution: '2024-05-02' },
+];
 
 export const FUND_LAYERS: FundLayer[] = [
   {
@@ -78,11 +90,20 @@ export const FUND_LAYERS: FundLayer[] = [
 
 export const TRUST_LEDGER: LedgerEntry[] = [
   {
+    id: 'L-1026',
+    date: '2024-05-22 09:00',
+    type: 'contribution',
+    description: 'إيداع المساهمة الشهرية',
+    actor: 'سلطان السعيدي',
+    amount: 100,
+    hash: '0x2d...8b4'
+  },
+  {
     id: 'L-1025',
     date: '2024-05-20 10:00',
     type: 'zakat',
     description: 'دفع الزكاة السنوية',
-    actor: 'Ahmed Al-Saidi',
+    actor: 'أحمد السعيدي',
     amount: 1250,
     hash: '0x1c...9a2'
   },
@@ -91,16 +112,8 @@ export const TRUST_LEDGER: LedgerEntry[] = [
     date: '2024-05-18 16:45',
     type: 'charity',
     description: 'مساهمة خيرية (كفالة أيتام)',
-    actor: 'Fatima Al-Saidi',
+    actor: 'فاطمة السعيدي',
     amount: 200,
     hash: '0x4e...3b1'
-  },
-  {
-    id: 'L-1023',
-    date: '2024-05-15 14:30',
-    type: 'access',
-    description: 'Guardian Login Verified',
-    actor: 'Ahmed Al-Saidi',
-    hash: '0x8f...2a1'
   }
 ];

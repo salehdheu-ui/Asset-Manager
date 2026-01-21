@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { Home, FileText, HandCoins, ShieldCheck, Menu, Wallet } from "lucide-react";
+import { Home, FileText, HandCoins, ShieldCheck, Menu, Wallet, Users } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
 import { CURRENT_USER } from "@/lib/mock-data";
@@ -18,6 +18,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
     { href: "/dashboard", icon: Home, label: "الرئيسية" },
     { href: "/expenses", icon: Wallet, label: "الإنفاق" },
     { href: "/loans", icon: HandCoins, label: "السلف" },
+    { href: "/members", icon: Users, label: "الأعضاء" },
     { href: "/ledger", icon: FileText, label: "السجل" },
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة" },
   ];
