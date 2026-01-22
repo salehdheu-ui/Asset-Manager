@@ -1,0 +1,122 @@
+import { apiRequest } from "./queryClient";
+import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings } from "@shared/schema";
+
+// Members
+export async function getMembers(): Promise<Member[]> {
+  const res = await fetch("/api/members");
+  if (!res.ok) throw new Error("Failed to fetch members");
+  return res.json();
+}
+
+export async function createMember(data: { name: string; role?: string; avatar?: string }): Promise<Member> {
+  const res = await apiRequest("POST", "/api/members", data);
+  return res.json();
+}
+
+export async function updateMember(id: string, data: Partial<{ name: string; role: string; avatar: string }>): Promise<Member> {
+  const res = await apiRequest("PATCH", `/api/members/${id}`, data);
+  return res.json();
+}
+
+export async function deleteMember(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/members/${id}`);
+}
+
+// Contributions
+export async function getContributions(year?: number): Promise<Contribution[]> {
+  const url = year ? `/api/contributions?year=${year}` : "/api/contributions";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch contributions");
+  return res.json();
+}
+
+export async function createContribution(data: { memberId: string; year: number; month: number; amount: string; status?: string }): Promise<Contribution> {
+  const res = await apiRequest("POST", "/api/contributions", data);
+  return res.json();
+}
+
+export async function approveContribution(id: string): Promise<Contribution> {
+  const res = await apiRequest("PATCH", `/api/contributions/${id}/approve`, {});
+  return res.json();
+}
+
+// Loans
+export async function getLoans(): Promise<Loan[]> {
+  const res = await fetch("/api/loans");
+  if (!res.ok) throw new Error("Failed to fetch loans");
+  return res.json();
+}
+
+export async function createLoan(data: { memberId: string; type: string; title: string; amount: string; repaymentMonths?: number }): Promise<Loan> {
+  const res = await apiRequest("POST", "/api/loans", data);
+  return res.json();
+}
+
+export async function updateLoanStatus(id: string, status: string): Promise<Loan> {
+  const res = await apiRequest("PATCH", `/api/loans/${id}/status`, { status });
+  return res.json();
+}
+
+export async function deleteLoan(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/loans/${id}`);
+}
+
+export async function getLoanRepayments(loanId: string): Promise<LoanRepayment[]> {
+  const res = await fetch(`/api/loans/${loanId}/repayments`);
+  if (!res.ok) throw new Error("Failed to fetch repayments");
+  return res.json();
+}
+
+export async function markRepaymentPaid(id: string): Promise<LoanRepayment> {
+  const res = await apiRequest("PATCH", `/api/repayments/${id}/pay`, {});
+  return res.json();
+}
+
+// Expenses
+export async function getExpenses(): Promise<Expense[]> {
+  const res = await fetch("/api/expenses");
+  if (!res.ok) throw new Error("Failed to fetch expenses");
+  return res.json();
+}
+
+export async function createExpense(data: { title: string; amount: string; category: string; description?: string }): Promise<Expense> {
+  const res = await apiRequest("POST", "/api/expenses", data);
+  return res.json();
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/expenses/${id}`);
+}
+
+// Settings
+export async function getSettings(): Promise<FamilySettings> {
+  const res = await fetch("/api/settings");
+  if (!res.ok) throw new Error("Failed to fetch settings");
+  return res.json();
+}
+
+export async function updateSettings(data: Partial<FamilySettings>): Promise<FamilySettings> {
+  const res = await apiRequest("PATCH", "/api/settings", data);
+  return res.json();
+}
+
+// Dashboard
+export interface DashboardSummary {
+  totalContributions: number;
+  totalLoans: number;
+  totalExpenses: number;
+  netCapital: number;
+  layers: Array<{
+    id: string;
+    name: string;
+    percentage: number;
+    amount: number;
+    locked: boolean;
+  }>;
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const res = await fetch("/api/dashboard/summary");
+  if (!res.ok) throw new Error("Failed to fetch dashboard summary");
+  return res.json();
+}

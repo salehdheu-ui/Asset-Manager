@@ -1,70 +1,51 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import CapitalLayerCard from "@/components/dashboard/CapitalLayerCard";
-import { FUND_LAYERS as INITIAL_LAYERS } from "@/lib/mock-data";
-import { AlertTriangle, TrendingUp, ShieldCheck, Wallet, ArrowUpRight, HandCoins, Users, CreditCard, History } from "lucide-react";
+import { getDashboardSummary } from "@/lib/api";
+import { AlertTriangle, TrendingUp, ShieldCheck, Wallet, ArrowUpRight, HandCoins, Users, CreditCard, History, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
+const layerMeta: Record<string, { arabicName: string; color: string }> = {
+  protected: { arabicName: "رأس المال المحمي", color: "bg-primary" },
+  emergency: { arabicName: "احتياطي الطوارئ", color: "bg-amber-600" },
+  flexible: { arabicName: "رأس المال المرن", color: "bg-emerald-500" },
+  growth: { arabicName: "رأس مال النمو", color: "bg-blue-600" },
+};
+
 export default function Dashboard() {
-  const [layers, setLayers] = useState(() => {
-    const saved = localStorage.getItem("fundLayers");
-    if (saved) return JSON.parse(saved);
-    return INITIAL_LAYERS;
+  const { data: summary, isLoading } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: getDashboardSummary,
   });
-
-  const [paymentMatrix, setPaymentMatrix] = useState(() => {
-    const saved = localStorage.getItem("paymentMatrix");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem("familyExpenses");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [loans, setLoans] = useState(() => {
-    const saved = localStorage.getItem("familyLoans");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [members, setMembers] = useState(() => {
-    const saved = localStorage.getItem("familyMembers");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const totalApprovedContributions = paymentMatrix.reduce((acc: number, member: any) => {
-    const memberTotal = Object.values(member.contributions || {}).reduce((yearAcc: number, year: any) => {
-      return yearAcc + Object.values(year).reduce((monthAcc: number, item: any) => {
-        if (item.status === 'approved') return monthAcc + (item.amount || 0);
-        return monthAcc;
-      }, 0);
-    }, 0);
-    return acc + memberTotal;
-  }, 0);
-
-  const totalExpenses = expenses.reduce((acc: number, exp: any) => acc + (exp.amount || 0), 0);
-  const totalLoanOut = loans.reduce((acc: number, loan: any) => acc + (loan.amount || 0), 0);
-
-  const netCapital = totalApprovedContributions - totalExpenses - totalLoanOut;
-  const totalCapital = netCapital > 0 ? netCapital : 0;
-
-  useEffect(() => {
-    const updatedLayers = layers.map((layer: any) => ({
-      ...layer,
-      amount: (totalCapital * layer.percentage) / 100
-    }));
-    setLayers(updatedLayers);
-    localStorage.setItem("fundLayers", JSON.stringify(updatedLayers));
-  }, [totalCapital]);
 
   const quickActions = [
     { label: "المساهمات", icon: CreditCard, href: "/payments", color: "bg-emerald-500" },
     { label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500" },
     { label: "السلف", icon: HandCoins, href: "/loans", color: "bg-blue-500" },
-    { label: "الأعضاء", icon: Users, href: "/members", color: "bg-purple-500" },
+    { label: "التقارير", icon: FileText, href: "/reports", color: "bg-purple-500" },
   ];
+
+  if (isLoading) {
+    return (
+      <MobileLayout title="المجلس المالي">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  const totalCapital = summary?.netCapital || 0;
+  const totalContributions = summary?.totalContributions || 0;
+  const totalExpenses = (summary?.totalExpenses || 0) + (summary?.totalLoans || 0);
+
+  const layers = (summary?.layers || []).map((layer) => ({
+    ...layer,
+    arabicName: layerMeta[layer.id]?.arabicName || layer.name,
+    color: layerMeta[layer.id]?.color || "bg-gray-500",
+  }));
 
   return (
     <MobileLayout title="المجلس المالي">
@@ -114,7 +95,7 @@ export default function Dashboard() {
             </div>
             <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">الإيداعات</span>
             <span className="text-2xl font-bold font-mono text-emerald-600">
-              {totalApprovedContributions.toLocaleString()} <span className="text-xs">ر.ع</span>
+              {totalContributions.toLocaleString()} <span className="text-xs">ر.ع</span>
             </span>
           </div>
           <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
@@ -123,7 +104,7 @@ export default function Dashboard() {
             </div>
             <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">المصروفات</span>
             <span className="text-2xl font-bold font-mono text-amber-600">
-              {(totalExpenses + totalLoanOut).toLocaleString()} <span className="text-xs">ر.ع</span>
+              {totalExpenses.toLocaleString()} <span className="text-xs">ر.ع</span>
             </span>
           </div>
         </div>
@@ -135,7 +116,7 @@ export default function Dashboard() {
             <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-bold uppercase tracking-wider">50/20/20/10</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {layers.map((layer: any, idx: number) => (
+            {layers.map((layer, idx) => (
               <CapitalLayerCard key={layer.id} layer={layer} delay={idx} />
             ))}
           </div>

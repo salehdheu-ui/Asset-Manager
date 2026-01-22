@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   History,
   LogOut,
+  FileText,
   Info
 } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
@@ -43,6 +44,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
     { href: "/expenses", icon: Wallet, label: "الإنفاق", desc: "الزكاة والمصروفات" },
     { href: "/loans", icon: HandCoins, label: "السلف", desc: "طلبات القروض العائلية" },
     { href: "/members", icon: Users, label: "الأعضاء", desc: "إدارة أفراد العائلة" },
+    { href: "/reports", icon: FileText, label: "التقارير", desc: "الكشوفات والبيانات المالية" },
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة", desc: "قوانين الصندوق والقرارات" },
     { href: "/ledger", icon: History, label: "السجل", desc: "سجل الثقة والعمليات" },
     { href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" },

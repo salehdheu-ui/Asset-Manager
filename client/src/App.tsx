@@ -13,6 +13,7 @@ import Expenses from "@/pages/expenses";
 import Members from "@/pages/members";
 import FamilySettings from "@/pages/settings";
 import PaymentList from "@/pages/payments";
+import Reports from "@/pages/reports";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/members" component={Members} />
       <Route path="/settings" component={FamilySettings} />
       <Route path="/payments" component={PaymentList} />
+      <Route path="/reports" component={Reports} />
       <Route component={NotFound} />
     </Switch>
   );

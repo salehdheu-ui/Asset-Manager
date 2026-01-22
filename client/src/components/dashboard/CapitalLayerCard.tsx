@@ -1,10 +1,19 @@
-import { FundLayer } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Lock, Unlock } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface LayerData {
+  id: string;
+  name: string;
+  arabicName: string;
+  percentage: number;
+  amount: number;
+  color: string;
+  locked: boolean;
+}
+
 interface CapitalLayerCardProps {
-  layer: FundLayer;
+  layer: LayerData;
   delay?: number;
 }
 
