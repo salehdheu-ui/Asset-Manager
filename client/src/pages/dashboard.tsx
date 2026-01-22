@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import CapitalLayerCard from "@/components/dashboard/CapitalLayerCard";
 import { FUND_LAYERS as INITIAL_LAYERS } from "@/lib/mock-data";
-import { AlertTriangle, TrendingUp, ShieldCheck, Wallet, ArrowUpRight } from "lucide-react";
+import { AlertTriangle, TrendingUp, ShieldCheck, Wallet, ArrowUpRight, HandCoins, Users, CreditCard, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [layers, setLayers] = useState(() => {
@@ -19,7 +20,17 @@ export default function Dashboard() {
   });
 
   const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem("familyExpenses"); // Assuming expenses might be saved
+    const saved = localStorage.getItem("familyExpenses");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [loans, setLoans] = useState(() => {
+    const saved = localStorage.getItem("familyLoans");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [members, setMembers] = useState(() => {
+    const saved = localStorage.getItem("familyMembers");
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -31,7 +42,12 @@ export default function Dashboard() {
     return acc + memberTotal;
   }, 0);
 
-  const totalCapital = totalContributions;
+  const totalExpenses = expenses.reduce((acc: number, exp: any) => acc + (exp.amount || 0), 0);
+  const totalLoanOut = loans.reduce((acc: number, loan: any) => acc + (loan.amount || 0), 0);
+
+  // Net Capital = Total In - Total Out
+  const netCapital = totalContributions - totalExpenses - totalLoanOut;
+  const totalCapital = netCapital > 0 ? netCapital : 0;
 
   // Update layers based on total capital
   useEffect(() => {
@@ -43,6 +59,13 @@ export default function Dashboard() {
     localStorage.setItem("fundLayers", JSON.stringify(updatedLayers));
   }, [totalCapital]);
 
+  const quickActions = [
+    { label: "المساهمات", icon: CreditCard, href: "/payments", color: "bg-emerald-500", count: paymentMatrix.length },
+    { label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500", count: expenses.length },
+    { label: "السلف", icon: HandCoins, href: "/loans", color: "bg-blue-500", count: loans.length },
+    { label: "الأعضاء", icon: Users, href: "/members", color: "bg-purple-500", count: members.length },
+  ];
+
   return (
     <MobileLayout title="المجلس المالي">
       <div className="space-y-6 pt-2">
@@ -51,59 +74,65 @@ export default function Dashboard() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-2 py-8 bg-card border border-border/40 rounded-[2.5rem] shadow-sm relative overflow-hidden"
+          className="text-center space-y-2 py-10 bg-card border border-border/40 rounded-[2.5rem] shadow-sm relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-          <p className="text-sm text-muted-foreground font-medium">إجمالي أصول الصندوق</p>
-          <h2 className="text-5xl font-bold font-mono text-primary tracking-tighter">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <p className="text-sm text-muted-foreground font-medium">صافي أصول الصندوق</p>
+          <h2 className="text-6xl font-bold font-mono text-primary tracking-tighter">
             {totalCapital.toLocaleString()} <span className="text-xl text-muted-foreground font-sans">ر.ع</span>
           </h2>
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 text-[10px] font-bold flex items-center gap-1 border border-emerald-500/20">
-              <TrendingUp className="w-3 h-3" />
-              <span>محدث لحظياً</span>
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-500/20">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>نظام متكامل ونشط</span>
             </div>
-            <Link href="/payments">
-              <a className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center gap-1 border border-primary/20 hover:bg-primary/20 transition-colors">
-                <Wallet className="w-3 h-3" />
-                <span>إضافة مساهمة</span>
-              </a>
-            </Link>
           </div>
         </motion.div>
 
-        {/* Quick Stats Grid */}
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-4 gap-3">
+          {quickActions.map((action) => (
+            <Link key={action.label} href={action.href}>
+              <a className="flex flex-col items-center gap-2 group">
+                <div className={cn(
+                  "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-active:scale-95",
+                  action.color
+                )}>
+                  <action.icon className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-bold text-muted-foreground">{action.label}</span>
+              </a>
+            </Link>
+          ))}
+        </div>
+
+        {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-card border border-border rounded-3xl p-4 flex flex-col gap-1">
-            <span className="text-[10px] text-muted-foreground">رأس المال المرن</span>
-            <span className="text-lg font-bold font-mono text-emerald-600">
-              {layers.find((l: any) => l.id === 'flexible')?.amount.toLocaleString()} <span className="text-[10px]">ر.ع</span>
+          <div className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
+            <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
+              <TrendingUp className="w-16 h-16" />
+            </div>
+            <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">إجمالي الإيداعات</span>
+            <span className="text-xl font-bold font-mono text-emerald-600">
+              {totalContributions.toLocaleString()} <span className="text-[10px]">ر.ع</span>
             </span>
           </div>
-          <div className="bg-card border border-border rounded-3xl p-4 flex flex-col gap-1">
-            <span className="text-[10px] text-muted-foreground">احتياطي الطوارئ</span>
-            <span className="text-lg font-bold font-mono text-amber-600">
-              {layers.find((l: any) => l.id === 'emergency')?.amount.toLocaleString()} <span className="text-[10px]">ر.ع</span>
+          <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
+            <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
+              <History className="w-16 h-16" />
+            </div>
+            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">إجمالي المصروفات</span>
+            <span className="text-xl font-bold font-mono text-amber-600">
+              {(totalExpenses + totalLoanOut).toLocaleString()} <span className="text-[10px]">ر.ع</span>
             </span>
           </div>
         </div>
 
-        {/* Safety Notice */}
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-             <h4 className="text-sm font-bold text-amber-800">تذكير خط الأمان</h4>
-             <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-               رأس مال النمو مقفل حتى يصل الصندوق إلى 120,000 ر.ع. التركيز الحالي على بناء القاعدة الأساسية.
-             </p>
-          </div>
-        </div>
-
-        {/* Capital Layers */}
-        <div className="space-y-4">
+        {/* Capital Layers Section */}
+        <div className="space-y-4 pb-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-lg text-primary font-heading">توزيع المحفظة</h3>
-            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">التقسيم الشرعي</span>
+            <h3 className="font-bold text-lg text-primary font-heading">توزيع المحفظة الذكي</h3>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">التقسيم 50/20/20/10</span>
           </div>
           <div className="grid gap-4">
             {layers.map((layer: any, idx: number) => (
