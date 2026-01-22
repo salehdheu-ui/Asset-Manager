@@ -1,122 +1,146 @@
+import { useState, useEffect } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { FAMILY_MEMBERS } from "@/lib/mock-data";
-import { User, CheckCircle2, Clock, CalendarDays, Wallet, ArrowRightLeft } from "lucide-react";
+import { FAMILY_MEMBERS as INITIAL_MEMBERS, FamilyMember } from "@/lib/mock-data";
+import { UserCog, UserPlus, Trash2, Home, CreditCard, ShieldCheck, History, HandCoins } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+
+interface ExtendedMember extends FamilyMember {
+  totalApproved: number;
+  totalPending: number;
+}
 
 export default function Members() {
+  const [members, setMembers] = useState<ExtendedMember[]>(() => {
+    const savedMembers = localStorage.getItem("familyMembers");
+    const paymentMatrix = JSON.parse(localStorage.getItem("paymentMatrix") || "[]");
+    
+    const baseMembers = savedMembers ? JSON.parse(savedMembers) : INITIAL_MEMBERS;
+    
+    return baseMembers.map((m: FamilyMember) => {
+      const paymentData = paymentMatrix.find((pm: any) => pm.id === m.id);
+      let approved = 0;
+      let pending = 0;
+      
+      if (paymentData?.contributions) {
+        Object.values(paymentData.contributions).forEach((year: any) => {
+          Object.values(year).forEach((item: any) => {
+            if (item.status === 'approved') approved += (item.amount || 0);
+            if (item.status === 'pending_approval') pending += (item.amount || 0);
+          });
+        });
+      }
+      
+      return { ...m, totalApproved: approved, totalPending: pending };
+    });
+  });
+  
+  const { toast } = useToast();
+
+  const addMember = () => {
+    const newId = Date.now().toString();
+    const newMember: ExtendedMember = {
+      id: newId,
+      name: "عضو جديد",
+      role: 'member',
+      avatar: "New",
+      contributionStatus: 'pending',
+      totalApproved: 0,
+      totalPending: 0
+    };
+    const updated = [...members, newMember];
+    setMembers(updated);
+    localStorage.setItem("familyMembers", JSON.stringify(updated.map(({totalApproved, totalPending, ...m}) => m)));
+    toast({ title: "تمت إضافة عضو جديد" });
+  };
+
+  const removeMember = (id: string) => {
+    if (members.length <= 1) return;
+    const updated = members.filter(m => m.id !== id);
+    setMembers(updated);
+    localStorage.setItem("familyMembers", JSON.stringify(updated.map(({totalApproved, totalPending, ...m}) => m)));
+    toast({ title: "تم حذف العضو" });
+  };
+
   return (
-    <MobileLayout title="أعضاء العائلة">
+    <MobileLayout title="إدارة أفراد العائلة">
       <div className="space-y-6 pt-2">
-        
-        {/* Monthly Contribution Status Summary */}
-        <div className="bg-primary/5 border border-primary/10 rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-primary">المساهمات الدورية</h3>
-            <p className="text-xs text-muted-foreground mt-1">مايو 2024</p>
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold font-mono text-primary">3/5</span>
-            <p className="text-[10px] text-muted-foreground">تم الدفع</p>
-          </div>
+        <div className="flex items-center justify-between px-1">
+          <h3 className="font-bold text-lg text-primary font-heading">قائمة الأعضاء</h3>
+          <button 
+            onClick={addMember}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>إضافة عضو</span>
+          </button>
         </div>
 
-        {/* Members List */}
-        <div className="space-y-4">
-          <h3 className="font-bold text-lg text-primary px-1">القائمة</h3>
-          <div className="grid gap-3">
-            {FAMILY_MEMBERS.map((member, idx) => (
-              <motion.div
-                key={member.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="bg-card border border-border rounded-2xl p-4 shadow-sm flex items-center gap-4"
-              >
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-primary border border-primary/10">
-                  {member.avatar}
+        <div className="grid gap-4 pb-12">
+          {members.map((member, idx) => (
+            <motion.div
+              key={member.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="bg-card border border-border rounded-[1.5rem] p-5 shadow-sm space-y-4"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary border-2 border-primary/5">
+                  {member.avatar || member.name.substring(0, 2)}
                 </div>
                 <div className="flex-1">
+                  <h4 className="font-bold text-lg leading-none mb-1">{member.name}</h4>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold">{member.name}</h4>
                     <span className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded-full font-medium border",
-                      member.role === 'guardian' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                      member.role === 'custodian' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      "bg-blue-50 text-blue-700 border-blue-200"
+                      "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                      member.role === 'guardian' ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted border-border text-muted-foreground"
                     )}>
-                      {member.role === 'guardian' ? 'وصي' : member.role === 'custodian' ? 'أمين' : 'عضو'}
+                      {member.role === 'guardian' ? 'الوصي' : member.role === 'custodian' ? 'الأمين' : 'عضو'}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    {member.contributionStatus === 'paid' ? (
-                      <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-medium">
-                        <CheckCircle2 className="w-3 h-3" /> تم دفع المساهمة
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-600 flex items-center gap-1 font-medium">
-                        <Clock className="w-3 h-3" /> بانتظار المساهمة
+                    {member.totalPending > 0 && (
+                      <span className="text-[8px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">
+                        بانتظار الموافقة
                       </span>
                     )}
                   </div>
                 </div>
-                
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button className="p-2 hover:bg-muted/50 rounded-lg transition-colors">
-                      <ArrowRightLeft className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md font-sans" dir="rtl">
-                    <DialogHeader>
-                      <DialogTitle className="font-heading text-xl">المساهمة الدورية</DialogTitle>
-                      <DialogDescription>
-                        توثيق عملية دفع المساهمة الشهرية للعضو {member.name}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6 space-y-4">
-                       <div className="bg-muted/30 p-4 rounded-xl flex items-center justify-between">
-                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                           <CalendarDays className="w-4 h-4" />
-                           <span>شهر المساهمة</span>
-                         </div>
-                         <span className="font-bold">مايو 2024</span>
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">المبلغ المتفق عليه (OZR)</label>
-                         <div className="flex items-center gap-3">
-                           <input 
-                             type="number" 
-                             defaultValue="100"
-                             className="flex-1 text-2xl font-mono p-3 border rounded-xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 
-                           />
-                           <Wallet className="w-6 h-6 text-primary" />
-                         </div>
-                       </div>
-                    </div>
-                    <button className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:bg-primary/90 transition-colors">
-                      تأكيد الاستلام والتوثيق
-                    </button>
-                  </DialogContent>
-                </Dialog>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+                <button 
+                  onClick={() => removeMember(member.id)}
+                  className="p-2 text-muted-foreground hover:text-destructive transition-colors bg-muted/30 rounded-lg"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
 
-        <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
-          <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-800 leading-relaxed">
-            المساهمات الدورية تعزز من "رأس المال المرن" وتساهم في زيادة قدرة الصندوق على مساعدة الأعضاء عند الحاجة.
-          </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
+                <div className="bg-emerald-500/5 rounded-2xl p-3 border border-emerald-500/10">
+                  <p className="text-[9px] text-emerald-700 font-bold mb-1">إجمالي المساهمات</p>
+                  <div className="text-lg font-bold font-mono text-emerald-600">
+                    {member.totalApproved.toLocaleString()} <span className="text-[10px] font-sans">ر.ع</span>
+                  </div>
+                </div>
+                <div className="bg-amber-500/5 rounded-2xl p-3 border border-amber-500/10">
+                  <p className="text-[9px] text-amber-700 font-bold mb-1">مبالغ قيد الانتظار</p>
+                  <div className="text-lg font-bold font-mono text-amber-600">
+                    {member.totalPending.toLocaleString()} <span className="text-[10px] font-sans">ر.ع</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-1">
+                <div className="flex items-center gap-1">
+                  <History className="w-3 h-3" />
+                  <span>آخر نشاط: {new Date().toLocaleDateString('ar-OM')}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <CreditCard className="w-3 h-3" />
+                  <span>عضوية نشطة</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </MobileLayout>

@@ -34,14 +34,10 @@ export default function Dashboard() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Calculate total ONLY from APPROVED contributions
   const totalApprovedContributions = paymentMatrix.reduce((acc: number, member: any) => {
     const memberTotal = Object.values(member.contributions || {}).reduce((yearAcc: number, year: any) => {
       return yearAcc + Object.values(year).reduce((monthAcc: number, item: any) => {
-        // New structure: item is an object with { amount, status }
-        if (item.status === 'approved') {
-          return monthAcc + (item.amount || 0);
-        }
+        if (item.status === 'approved') return monthAcc + (item.amount || 0);
         return monthAcc;
       }, 0);
     }, 0);
@@ -51,11 +47,9 @@ export default function Dashboard() {
   const totalExpenses = expenses.reduce((acc: number, exp: any) => acc + (exp.amount || 0), 0);
   const totalLoanOut = loans.reduce((acc: number, loan: any) => acc + (loan.amount || 0), 0);
 
-  // Net Capital = Total Approved In - Total Out
   const netCapital = totalApprovedContributions - totalExpenses - totalLoanOut;
   const totalCapital = netCapital > 0 ? netCapital : 0;
 
-  // Update layers based on total capital
   useEffect(() => {
     const updatedLayers = layers.map((layer: any) => ({
       ...layer,
@@ -66,81 +60,81 @@ export default function Dashboard() {
   }, [totalCapital]);
 
   const quickActions = [
-    { label: "المساهمات", icon: CreditCard, href: "/payments", color: "bg-emerald-500", count: paymentMatrix.length },
-    { label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500", count: expenses.length },
-    { label: "السلف", icon: HandCoins, href: "/loans", color: "bg-blue-500", count: loans.length },
-    { label: "الأعضاء", icon: Users, href: "/members", color: "bg-purple-500", count: members.length },
+    { label: "المساهمات", icon: CreditCard, href: "/payments", color: "bg-emerald-500" },
+    { label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500" },
+    { label: "السلف", icon: HandCoins, href: "/loans", color: "bg-blue-500" },
+    { label: "الأعضاء", icon: Users, href: "/members", color: "bg-purple-500" },
   ];
 
   return (
     <MobileLayout title="المجلس المالي">
-      <div className="space-y-4 pt-1">
+      <div className="space-y-6 pt-1">
         
         {/* Total Wealth Summary */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-1 py-6 bg-card border border-border/40 rounded-[2rem] shadow-sm relative overflow-hidden"
+          className="text-center space-y-2 py-8 bg-card border border-border/40 rounded-[2.5rem] shadow-sm relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-          <p className="text-xs text-muted-foreground font-medium">صافي الأصول المعتمدة</p>
-          <h2 className="text-4xl font-bold font-mono text-primary tracking-tighter">
-            {totalCapital.toLocaleString()} <span className="text-lg text-muted-foreground font-sans">ر.ع</span>
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <p className="text-sm text-muted-foreground font-medium">صافي الأصول المعتمدة</p>
+          <h2 className="text-5xl font-bold font-mono text-primary tracking-tighter">
+            {totalCapital.toLocaleString()} <span className="text-xl text-muted-foreground font-sans">ر.ع</span>
           </h2>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 text-[10px] font-bold flex items-center gap-1 border border-emerald-500/20 shadow-sm">
-              <ShieldCheck className="w-3 h-3" />
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-500/20 shadow-sm">
+              <ShieldCheck className="w-4 h-4" />
               <span>الاعتمادات نشطة</span>
             </div>
           </div>
         </motion.div>
 
         {/* Quick Actions Grid */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-4">
           {quickActions.map((action) => (
             <Link key={action.label} href={action.href}>
-              <a className="flex flex-col items-center gap-1.5 group">
+              <a className="flex flex-col items-center gap-2 group">
                 <div className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-active:scale-95",
+                  "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-active:scale-95",
                   action.color
                 )}>
-                  <action.icon className="w-5 h-5" />
+                  <action.icon className="w-7 h-7" />
                 </div>
-                <span className="text-[9px] font-bold text-muted-foreground">{action.label}</span>
+                <span className="text-xs font-bold text-muted-foreground">{action.label}</span>
               </a>
             </Link>
           ))}
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 flex flex-col gap-0.5 relative overflow-hidden group">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
             <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
-              <TrendingUp className="w-12 h-12" />
+              <TrendingUp className="w-16 h-16" />
             </div>
-            <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">الإيداعات</span>
-            <span className="text-lg font-bold font-mono text-emerald-600">
-              {totalApprovedContributions.toLocaleString()} <span className="text-[9px]">ر.ع</span>
+            <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">الإيداعات</span>
+            <span className="text-2xl font-bold font-mono text-emerald-600">
+              {totalApprovedContributions.toLocaleString()} <span className="text-xs">ر.ع</span>
             </span>
           </div>
-          <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 flex flex-col gap-0.5 relative overflow-hidden group">
+          <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
             <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
-              <History className="w-12 h-12" />
+              <History className="w-16 h-16" />
             </div>
-            <span className="text-[9px] text-amber-700 font-bold uppercase tracking-wider">المصروفات</span>
-            <span className="text-lg font-bold font-mono text-amber-600">
-              {(totalExpenses + totalLoanOut).toLocaleString()} <span className="text-[9px]">ر.ع</span>
+            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">المصروفات</span>
+            <span className="text-2xl font-bold font-mono text-amber-600">
+              {(totalExpenses + totalLoanOut).toLocaleString()} <span className="text-xs">ر.ع</span>
             </span>
           </div>
         </div>
 
         {/* Capital Layers Section */}
-        <div className="space-y-3 pb-2">
+        <div className="space-y-4 pb-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-base text-primary font-heading">توزيع المحفظة</h3>
-            <span className="text-[9px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">50/20/20/10</span>
+            <h3 className="font-bold text-lg text-primary font-heading">توزيع المحفظة</h3>
+            <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-bold uppercase tracking-wider">50/20/20/10</span>
           </div>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {layers.map((layer: any, idx: number) => (
               <CapitalLayerCard key={layer.id} layer={layer} delay={idx} />
             ))}
