@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ShieldCheck,
   History,
+  LogOut,
   Info
 } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
@@ -27,9 +28,14 @@ interface MobileLayoutProps {
 }
 
 export default function MobileLayout({ children, title }: MobileLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const familyName = localStorage.getItem("familyName") || "صندوق العائلة";
+
+  const handleLogout = () => {
+    // In a mockup, we just redirect to the auth page
+    setLocation("/");
+  };
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية", desc: "نظرة عامة على الصندوق" },
@@ -140,7 +146,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 ))}
               </div>
 
-              <div className="mt-6 pt-6 border-t border-border/50">
+              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
                 <div className="bg-muted/30 p-4 rounded-2xl">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs">
@@ -155,6 +161,16 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                     "نحن نؤمن بأن المال وسيلة لتمكين العائلة وتعزيز أواصر المودة."
                   </p>
                 </div>
+                
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl text-destructive hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/10 font-bold text-sm"
+                >
+                  <div className="p-2 rounded-xl bg-destructive/10">
+                    <LogOut className="w-5 h-5" />
+                  </div>
+                  <span>تسجيل الخروج</span>
+                </button>
               </div>
             </motion.div>
           </>
