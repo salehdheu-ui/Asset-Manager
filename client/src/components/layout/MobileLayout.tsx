@@ -53,17 +53,17 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
       />
 
       {/* Header */}
-      <header className="relative z-10 px-6 pt-12 pb-6 bg-gradient-to-b from-background via-background/95 to-transparent">
+      <header className="relative z-10 px-5 pt-8 pb-4 bg-gradient-to-b from-background via-background/95 to-transparent shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-primary/10 p-2 flex items-center justify-center border border-primary/20">
+          <div className="flex items-center gap-2.5">
+             <div className="w-9 h-9 rounded-full bg-primary/10 p-1.5 flex items-center justify-center border border-primary/20">
                 <img src={logo} alt="Logo" className="w-full h-full object-contain opacity-80" />
              </div>
              <div>
-               <h1 className="text-xl font-bold font-heading text-primary leading-tight">{title || familyName}</h1>
-               <div className="flex items-center gap-1.5">
-                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                 <p className="text-[10px] text-muted-foreground font-sans uppercase tracking-wider">
+               <h1 className="text-lg font-bold font-heading text-primary leading-tight">{title || familyName}</h1>
+               <div className="flex items-center gap-1">
+                 <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                 <p className="text-[9px] text-muted-foreground font-sans uppercase tracking-wider">
                    {CURRENT_USER.role === 'guardian' ? 'الوصي المسؤول' : 'عضو الصندوق'}
                  </p>
                </div>
@@ -71,10 +71,10 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
           </div>
           <button 
             onClick={() => setIsMenuOpen(true)}
-            className="p-2.5 hover:bg-primary/5 rounded-2xl transition-all border border-transparent active:border-primary/10 relative group"
+            className="p-2 hover:bg-primary/5 rounded-xl transition-all border border-transparent active:border-primary/10 relative"
           >
-            <Menu className="w-6 h-6 text-primary" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+            <Menu className="w-5 h-5 text-primary" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></span>
           </button>
         </div>
       </header>
@@ -162,12 +162,12 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 px-6 pb-28 overflow-y-auto scrollbar-hide">
+      <main className="relative z-10 flex-1 px-5 pb-20 overflow-y-auto scrollbar-hide">
         {children}
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/90 backdrop-blur-xl border-t border-border/40 z-50 pb-8 pt-3 px-6 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/90 backdrop-blur-xl border-t border-border/40 z-50 pb-5 pt-2 px-5 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <ul className="flex justify-between items-center">
           {bottomNavItems.map((item) => {
             const isActive = location === item.href;
@@ -175,17 +175,17 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
               <li key={item.href} className="flex-1">
                 <Link href={item.href}>
                   <a className={cn(
-                    "flex flex-col items-center gap-1.5 py-1 rounded-2xl transition-all duration-300 relative group",
+                    "flex flex-col items-center gap-1 py-1 rounded-xl transition-all duration-300 relative group",
                     isActive ? "text-primary" : "text-muted-foreground hover:text-primary/70"
                   )}>
                     {isActive && (
                       <motion.div 
                         layoutId="nav-active"
-                        className="absolute -top-3 w-8 h-1 bg-primary rounded-full"
+                        className="absolute -top-2 w-6 h-0.5 bg-primary rounded-full"
                       />
                     )}
-                    <item.icon className={cn("w-5 h-5 transition-transform group-active:scale-90", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className="text-[10px] font-bold tracking-tight">{item.label}</span>
+                    <item.icon className={cn("w-4.5 h-4.5 transition-transform group-active:scale-90", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
+                    <span className="text-[8px] font-bold tracking-tight">{item.label}</span>
                   </a>
                 </Link>
               </li>

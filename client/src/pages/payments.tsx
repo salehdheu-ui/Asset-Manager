@@ -139,24 +139,24 @@ export default function YearlyPaymentMatrix() {
         </div>
 
         {/* Matrix View */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {members.map((member, mIdx) => (
             <motion.div 
               key={member.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: mIdx * 0.05 }}
-              className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm"
+              className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
             >
               {/* Member Header */}
-              <div className="p-4 bg-primary/5 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border border-primary/20">
+              <div className="p-3 bg-primary/5 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border border-primary/20 text-xs">
                     {member.avatar || member.name.substring(0, 2)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm">{member.name}</h4>
-                    <p className="text-[10px] text-muted-foreground">إجمالي المعتمد {selectedYear}: {
+                    <h4 className="font-bold text-xs">{member.name}</h4>
+                    <p className="text-[9px] text-muted-foreground">إجمالي {selectedYear}: {
                       Object.values(member.contributions[selectedYear] || {})
                         .filter(c => c.status === 'approved')
                         .reduce((a, b) => a + b.amount, 0)
@@ -165,14 +165,14 @@ export default function YearlyPaymentMatrix() {
                 </div>
                 <div className="flex items-center gap-2">
                    {Object.values(member.contributions[selectedYear] || {}).some(c => c.status === 'pending_approval') && (
-                     <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                     <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
                    )}
-                   <History className="w-4 h-4 text-primary/40" />
+                   <History className="w-3.5 h-3.5 text-primary/40" />
                 </div>
               </div>
 
               {/* Months Grid */}
-              <div className="grid grid-cols-4 gap-px bg-border/40">
+              <div className="grid grid-cols-4 gap-px bg-border/30">
                 {months.map((month) => {
                   const contribution = member.contributions[selectedYear]?.[month.id];
                   const isPending = contribution?.status === 'pending_approval';
@@ -183,21 +183,21 @@ export default function YearlyPaymentMatrix() {
                     <Dialog key={month.id}>
                       <DialogTrigger asChild>
                         <button className={cn(
-                          "flex flex-col items-center justify-center p-3 gap-1 transition-colors relative group bg-card hover:bg-muted/50",
+                          "flex flex-col items-center justify-center p-2.5 gap-0.5 transition-colors relative group bg-card hover:bg-muted/50",
                           isApproved ? "text-primary" : isPending ? "text-amber-600" : "text-muted-foreground"
                         )}>
-                          <span className="text-[10px] font-medium">{month.name}</span>
-                          <span className="text-xs font-mono font-bold">
+                          <span className="text-[9px] font-medium">{month.name}</span>
+                          <span className="text-[11px] font-mono font-bold">
                             {amount > 0 ? amount : "---"}
                           </span>
                           {isApproved && (
                             <div className="absolute top-1 left-1">
-                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                              <CheckCircle2 className="w-2 h-2 text-emerald-500" />
                             </div>
                           )}
                           {isPending && (
                             <div className="absolute top-1 left-1">
-                              <Clock className="w-2.5 h-2.5 text-amber-500" />
+                              <Clock className="w-2 h-2 text-amber-500" />
                             </div>
                           )}
                         </button>
