@@ -34,10 +34,16 @@ export default function Dashboard() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Calculate total from payment matrix
-  const totalContributions = paymentMatrix.reduce((acc: number, member: any) => {
+  // Calculate total ONLY from APPROVED contributions
+  const totalApprovedContributions = paymentMatrix.reduce((acc: number, member: any) => {
     const memberTotal = Object.values(member.contributions || {}).reduce((yearAcc: number, year: any) => {
-      return yearAcc + Object.values(year).reduce((monthAcc: number, amount: any) => monthAcc + amount, 0);
+      return yearAcc + Object.values(year).reduce((monthAcc: number, item: any) => {
+        // New structure: item is an object with { amount, status }
+        if (item.status === 'approved') {
+          return monthAcc + (item.amount || 0);
+        }
+        return monthAcc;
+      }, 0);
     }, 0);
     return acc + memberTotal;
   }, 0);
@@ -45,8 +51,8 @@ export default function Dashboard() {
   const totalExpenses = expenses.reduce((acc: number, exp: any) => acc + (exp.amount || 0), 0);
   const totalLoanOut = loans.reduce((acc: number, loan: any) => acc + (loan.amount || 0), 0);
 
-  // Net Capital = Total In - Total Out
-  const netCapital = totalContributions - totalExpenses - totalLoanOut;
+  // Net Capital = Total Approved In - Total Out
+  const netCapital = totalApprovedContributions - totalExpenses - totalLoanOut;
   const totalCapital = netCapital > 0 ? netCapital : 0;
 
   // Update layers based on total capital
@@ -77,14 +83,14 @@ export default function Dashboard() {
           className="text-center space-y-2 py-10 bg-card border border-border/40 rounded-[2.5rem] shadow-sm relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-          <p className="text-sm text-muted-foreground font-medium">صافي أصول الصندوق</p>
+          <p className="text-sm text-muted-foreground font-medium">صافي الأصول المعتمدة</p>
           <h2 className="text-6xl font-bold font-mono text-primary tracking-tighter">
             {totalCapital.toLocaleString()} <span className="text-xl text-muted-foreground font-sans">ر.ع</span>
           </h2>
           <div className="flex items-center justify-center gap-3 mt-6">
-            <div className="px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-500/20">
+            <div className="px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-500/20 shadow-sm">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>نظام متكامل ونشط</span>
+              <span>نظام الاعتمادات نشط</span>
             </div>
           </div>
         </motion.div>
@@ -112,16 +118,16 @@ export default function Dashboard() {
             <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
               <TrendingUp className="w-16 h-16" />
             </div>
-            <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">إجمالي الإيداعات</span>
+            <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">الإيداعات المعتمدة</span>
             <span className="text-xl font-bold font-mono text-emerald-600">
-              {totalContributions.toLocaleString()} <span className="text-[10px]">ر.ع</span>
+              {totalApprovedContributions.toLocaleString()} <span className="text-[10px]">ر.ع</span>
             </span>
           </div>
           <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-5 flex flex-col gap-1 relative overflow-hidden group">
             <div className="absolute -right-2 -bottom-2 opacity-5 transition-transform group-hover:scale-110">
               <History className="w-16 h-16" />
             </div>
-            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">إجمالي المصروفات</span>
+            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">إجمالي الخارج</span>
             <span className="text-xl font-bold font-mono text-amber-600">
               {(totalExpenses + totalLoanOut).toLocaleString()} <span className="text-[10px]">ر.ع</span>
             </span>
