@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getMembers, createMember, deleteMember, getContributions, getLoans } from "@/lib/api";
-import { UserPlus, Trash2, CreditCard, History, HandCoins } from "lucide-react";
+import { getMembers, createMember, deleteMember, updateMember, getContributions, getLoans } from "@/lib/api";
+import { UserPlus, Trash2, CreditCard, History, HandCoins, Pencil, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function Members() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members"],
@@ -41,6 +44,32 @@ export default function Members() {
     },
   });
 
+  const updateMemberMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateMember(id, { name, avatar: name.substring(0, 2) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      toast({ title: "تم تحديث بيانات العضو" });
+      setEditingMember(null);
+      setEditName("");
+    },
+  });
+
+  const startEditing = (member: { id: string; name: string }) => {
+    setEditingMember(member.id);
+    setEditName(member.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingMember(null);
+    setEditName("");
+  };
+
+  const saveEdit = (id: string) => {
+    if (editName.trim()) {
+      updateMemberMutation.mutate({ id, name: editName.trim() });
+    }
+  };
+
   const getMemberStats = (memberId: string) => {
     const memberContributions = contributions.filter(c => c.memberId === memberId && c.status === "approved");
     const memberLoans = loans.filter(l => l.memberId === memberId && l.status === "approved");
@@ -72,6 +101,7 @@ export default function Members() {
             onClick={() => addMemberMutation.mutate()}
             disabled={addMemberMutation.isPending}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform disabled:opacity-50"
+            data-testid="button-add-member"
           >
             <UserPlus className="w-4 h-4" />
             <span>إضافة عضو</span>
@@ -87,6 +117,8 @@ export default function Members() {
           ) : (
             members.map((member, idx) => {
               const stats = getMemberStats(member.id);
+              const isEditing = editingMember === member.id;
+              
               return (
                 <motion.div
                   key={member.id}
@@ -94,34 +126,81 @@ export default function Members() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   className="bg-card border border-border rounded-[1.5rem] p-5 shadow-sm space-y-4"
+                  data-testid={`card-member-${member.id}`}
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary border-2 border-primary/5">
                       {member.avatar || member.name.substring(0, 2)}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-lg leading-none mb-1">{member.name}</h4>
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
-                          member.role === 'guardian' ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted border-border text-muted-foreground"
-                        )}>
-                          {member.role === 'guardian' ? 'الوصي' : member.role === 'custodian' ? 'الأمين' : 'عضو'}
-                        </span>
-                        {stats.totalPending > 0 && (
-                          <span className="text-[8px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">
-                            بانتظار الموافقة
-                          </span>
-                        )}
-                      </div>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="flex-1 font-bold text-lg bg-muted/50 border border-primary/30 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            autoFocus
+                            data-testid={`input-edit-name-${member.id}`}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(member.id);
+                              if (e.key === 'Escape') cancelEditing();
+                            }}
+                          />
+                          <button
+                            onClick={() => saveEdit(member.id)}
+                            disabled={updateMemberMutation.isPending}
+                            className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                            data-testid={`button-save-edit-${member.id}`}
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="p-2 bg-muted text-muted-foreground rounded-lg hover:bg-destructive hover:text-white transition-colors"
+                            data-testid={`button-cancel-edit-${member.id}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <h4 className="font-bold text-lg leading-none mb-1">{member.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                              member.role === 'guardian' ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted border-border text-muted-foreground"
+                            )}>
+                              {member.role === 'guardian' ? 'الوصي' : member.role === 'custodian' ? 'الأمين' : 'عضو'}
+                            </span>
+                            {stats.totalPending > 0 && (
+                              <span className="text-[8px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">
+                                بانتظار الموافقة
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => removeMemberMutation.mutate(member.id)}
-                      disabled={removeMemberMutation.isPending || members.length <= 1}
-                      className="p-2 text-muted-foreground hover:text-destructive transition-colors bg-muted/30 rounded-lg disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!isEditing && (
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => startEditing(member)}
+                          className="p-2 text-muted-foreground hover:text-primary transition-colors bg-muted/30 rounded-lg"
+                          data-testid={`button-edit-member-${member.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => removeMemberMutation.mutate(member.id)}
+                          disabled={removeMemberMutation.isPending || members.length <= 1}
+                          className="p-2 text-muted-foreground hover:text-destructive transition-colors bg-muted/30 rounded-lg disabled:opacity-50"
+                          data-testid={`button-delete-member-${member.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border/40">
