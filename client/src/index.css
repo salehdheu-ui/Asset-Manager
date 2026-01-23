@@ -43,8 +43,8 @@
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
 
-  --font-sans: 'Tajawal', sans-serif;
-  --font-heading: 'Cairo', sans-serif;
+  --font-sans: 'Noto Sans Arabic', sans-serif;
+  --font-heading: 'Noto Kufi Arabic', sans-serif;
   
   --radius: 0.75rem;
 }
