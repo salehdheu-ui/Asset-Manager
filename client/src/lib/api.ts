@@ -1,5 +1,5 @@
 import { apiRequest } from "./queryClient";
-import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings } from "@shared/schema";
+import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings, User } from "@shared/schema";
 
 // Members
 export async function getMembers(): Promise<Member[]> {
@@ -119,4 +119,37 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const res = await fetch("/api/dashboard/summary");
   if (!res.ok) throw new Error("Failed to fetch dashboard summary");
   return res.json();
+}
+
+// User Profile
+export async function getUserProfile(): Promise<User & { member?: Member }> {
+  const res = await fetch("/api/user/profile", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch profile");
+  return res.json();
+}
+
+export async function updateUserProfile(data: { firstName?: string; lastName?: string }): Promise<User> {
+  const res = await apiRequest("PATCH", "/api/user/profile", data);
+  return res.json();
+}
+
+// Admin - Users
+export async function getAdminUsers(): Promise<User[]> {
+  const res = await fetch("/api/admin/users", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
+export async function updateUserRole(id: string, role: string): Promise<User> {
+  const res = await apiRequest("PATCH", `/api/admin/users/${id}/role`, { role });
+  return res.json();
+}
+
+export async function linkUserToMember(id: string, memberId: string): Promise<User> {
+  const res = await apiRequest("PATCH", `/api/admin/users/${id}/member`, { memberId });
+  return res.json();
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/admin/users/${id}`);
 }

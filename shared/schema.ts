@@ -3,6 +3,9 @@ import { pgTable, text, varchar, integer, timestamp, boolean, decimal } from "dr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Export auth models (required for Replit Auth)
+export * from "./models/auth";
+
 // Family Members
 export const members = pgTable("members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -3,12 +3,132 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMemberSchema, insertContributionSchema, insertLoanSchema, insertExpenseSchema, insertFamilySettingsSchema } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { db } from "./db";
+import { users } from "@shared/models/auth";
+import { eq } from "drizzle-orm";
+
+// Middleware to check if user is admin
+const isAdmin = async (req: any, res: any, next: any) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ error: "Failed to verify admin status" });
+  }
+};
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // Setup authentication FIRST
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
+  // ============= Admin User Management =============
+  app.get("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allUsers = await db.select().from(users);
+      res.json(allUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/role", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { role } = req.body;
+      const userId = req.params.id as string;
+      if (!["admin", "user"].includes(role)) {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+      const [updated] = await db
+        .update(users)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user role" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/member", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { memberId } = req.body;
+      const userId = req.params.id as string;
+      const [updated] = await db
+        .update(users)
+        .set({ memberId, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to link user to member" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = req.params.id as string;
+      await db.delete(users).where(eq(users.id, userId));
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // ============= User Profile =============
+  app.get("/api/user/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // If linked to a member, get member data too
+      let memberData = null;
+      if (user.memberId) {
+        memberData = await storage.getMember(user.memberId);
+      }
+      
+      res.json({ ...user, member: memberData });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.patch("/api/user/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const { firstName, lastName } = req.body;
+      const [updated] = await db
+        .update(users)
+        .set({ firstName, lastName, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   // ============= Members =============
   app.get("/api/members", async (req, res) => {
     try {
@@ -19,7 +139,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/members", async (req, res) => {
+  app.post("/api/members", isAuthenticated, async (req, res) => {
     try {
       const data = insertMemberSchema.parse(req.body);
       const member = await storage.createMember(data);
@@ -33,9 +153,10 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/members/:id", async (req, res) => {
+  app.patch("/api/members/:id", isAuthenticated, async (req, res) => {
     try {
-      const member = await storage.updateMember(req.params.id, req.body);
+      const memberId = req.params.id as string;
+      const member = await storage.updateMember(memberId, req.body);
       if (!member) {
         return res.status(404).json({ error: "Member not found" });
       }
@@ -45,9 +166,10 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/members/:id", async (req, res) => {
+  app.delete("/api/members/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      await storage.deleteMember(req.params.id);
+      const memberId = req.params.id as string;
+      await storage.deleteMember(memberId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete member" });
@@ -74,7 +196,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/contributions", async (req, res) => {
+  app.post("/api/contributions", isAuthenticated, async (req, res) => {
     try {
       const data = insertContributionSchema.parse(req.body);
       const contribution = await storage.createContribution(data);
@@ -88,9 +210,10 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/contributions/:id/approve", async (req, res) => {
+  app.patch("/api/contributions/:id/approve", isAuthenticated, async (req, res) => {
     try {
-      const contribution = await storage.approveContribution(req.params.id);
+      const contribId = req.params.id as string;
+      const contribution = await storage.approveContribution(contribId);
       if (!contribution) {
         return res.status(404).json({ error: "Contribution not found" });
       }
@@ -113,7 +236,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/loans", async (req, res) => {
+  app.post("/api/loans", isAuthenticated, async (req, res) => {
     try {
       const data = insertLoanSchema.parse(req.body);
       const loan = await storage.createLoan(data);
@@ -149,13 +272,14 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/loans/:id/status", async (req, res) => {
+  app.patch("/api/loans/:id/status", isAuthenticated, async (req, res) => {
     try {
       const { status } = req.body;
+      const loanId = req.params.id as string;
       if (!["pending", "approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Invalid status" });
       }
-      const loan = await storage.updateLoanStatus(req.params.id, status);
+      const loan = await storage.updateLoanStatus(loanId, status);
       if (!loan) {
         return res.status(404).json({ error: "Loan not found" });
       }
@@ -165,9 +289,10 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/loans/:id", async (req, res) => {
+  app.delete("/api/loans/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteLoan(req.params.id);
+      const loanId = req.params.id as string;
+      await storage.deleteLoan(loanId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete loan" });
@@ -177,16 +302,18 @@ export async function registerRoutes(
   // Loan Repayments
   app.get("/api/loans/:id/repayments", async (req, res) => {
     try {
-      const repayments = await storage.getLoanRepayments(req.params.id);
+      const loanId = req.params.id as string;
+      const repayments = await storage.getLoanRepayments(loanId);
       res.json(repayments);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch repayments" });
     }
   });
 
-  app.patch("/api/repayments/:id/pay", async (req, res) => {
+  app.patch("/api/repayments/:id/pay", isAuthenticated, async (req, res) => {
     try {
-      const repayment = await storage.markRepaymentPaid(req.params.id);
+      const repaymentId = req.params.id as string;
+      const repayment = await storage.markRepaymentPaid(repaymentId);
       if (!repayment) {
         return res.status(404).json({ error: "Repayment not found" });
       }
@@ -206,7 +333,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/expenses", async (req, res) => {
+  app.post("/api/expenses", isAuthenticated, async (req, res) => {
     try {
       const data = insertExpenseSchema.parse(req.body);
       const expense = await storage.createExpense(data);
@@ -220,9 +347,10 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/expenses/:id", async (req, res) => {
+  app.delete("/api/expenses/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteExpense(req.params.id);
+      const expenseId = req.params.id as string;
+      await storage.deleteExpense(expenseId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete expense" });
@@ -245,7 +373,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/settings", async (req, res) => {
+  app.patch("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const settings = await storage.updateFamilySettings(req.body);
       res.json(settings);

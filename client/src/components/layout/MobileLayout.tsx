@@ -15,11 +15,13 @@ import {
   History,
   LogOut,
   FileText,
-  Info
+  Info,
+  User,
+  Shield
 } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MobileLayoutProps {
@@ -32,11 +34,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const familyName = localStorage.getItem("familyName") || "صندوق العائلة";
-
-  const handleLogout = () => {
-    // In a mockup, we just redirect to the auth page
-    setLocation("/");
-  };
+  const { user } = useAuth();
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية", desc: "نظرة عامة على الصندوق" },
@@ -45,6 +43,8 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
     { href: "/loans", icon: HandCoins, label: "السلف", desc: "طلبات القروض العائلية" },
     { href: "/members", icon: Users, label: "الأعضاء", desc: "إدارة أفراد العائلة" },
     { href: "/reports", icon: FileText, label: "التقارير", desc: "الكشوفات والبيانات المالية" },
+    { href: "/profile", icon: User, label: "حسابي", desc: "إعدادات الحساب الشخصي" },
+    ...(user?.role === 'admin' ? [{ href: "/admin", icon: Shield, label: "الإدارة", desc: "إدارة المستخدمين والصلاحيات" }] : []),
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة", desc: "قوانين الصندوق والقرارات" },
     { href: "/ledger", icon: History, label: "السجل", desc: "سجل الثقة والعمليات" },
     { href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" },
@@ -72,7 +72,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                <div className="flex items-center gap-1">
                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
                  <p className="text-[9px] text-muted-foreground font-sans uppercase tracking-wider">
-                   {CURRENT_USER.role === 'guardian' ? 'الوصي المسؤول' : 'عضو الصندوق'}
+                   {user?.role === 'admin' ? 'مشرف النظام' : 'عضو الصندوق'}
                  </p>
                </div>
              </div>
@@ -122,28 +122,28 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
 
               <div className="space-y-2 flex-1 overflow-y-auto pr-1">
                 {navItems.map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <a 
-                      onClick={() => setIsMenuOpen(false)}
-                      className={cn(
-                        "flex items-center gap-4 p-4 rounded-2xl transition-all border",
-                        location === item.href 
-                          ? "bg-primary/5 border-primary/20 text-primary shadow-sm" 
-                          : "border-transparent hover:bg-muted/50 text-muted-foreground"
-                      )}
-                    >
-                      <div className={cn(
-                        "p-2 rounded-xl",
-                        location === item.href ? "bg-primary/10" : "bg-muted"
-                      )}>
-                        <item.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm">{item.label}</div>
-                        <div className="text-[10px] opacity-70">{item.desc}</div>
-                      </div>
-                      <ChevronLeft className="w-4 h-4 mr-auto opacity-30" />
-                    </a>
+                  <Link 
+                    key={item.href} 
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-2xl transition-all border",
+                      location === item.href 
+                        ? "bg-primary/5 border-primary/20 text-primary shadow-sm" 
+                        : "border-transparent hover:bg-muted/50 text-muted-foreground"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-2 rounded-xl",
+                      location === item.href ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{item.label}</div>
+                      <div className="text-[10px] opacity-70">{item.desc}</div>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 mr-auto opacity-30" />
                   </Link>
                 ))}
               </div>
@@ -151,12 +151,16 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
               <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
                 <div className="bg-muted/30 p-4 rounded-2xl">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs">
-                      {CURRENT_USER.avatar}
-                    </div>
+                    {user?.profileImageUrl ? (
+                      <img src={user.profileImageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs">
+                        {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                      </div>
+                    )}
                     <div>
-                      <div className="text-xs font-bold">{CURRENT_USER.name}</div>
-                      <div className="text-[9px] text-muted-foreground uppercase tracking-widest">{CURRENT_USER.role}</div>
+                      <div className="text-xs font-bold">{user?.firstName} {user?.lastName}</div>
+                      <div className="text-[9px] text-muted-foreground uppercase tracking-widest">{user?.role === 'admin' ? 'مشرف' : 'مستخدم'}</div>
                     </div>
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed italic">
@@ -164,15 +168,15 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                   </p>
                 </div>
                 
-                <button 
-                  onClick={handleLogout}
+                <a 
+                  href="/api/logout"
                   className="w-full flex items-center gap-3 p-4 rounded-2xl text-destructive hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/10 font-bold text-sm"
                 >
                   <div className="p-2 rounded-xl bg-destructive/10">
                     <LogOut className="w-5 h-5" />
                   </div>
                   <span>تسجيل الخروج</span>
-                </button>
+                </a>
               </div>
             </motion.div>
           </>

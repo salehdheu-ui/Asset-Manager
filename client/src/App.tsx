@@ -14,6 +14,8 @@ import Members from "@/pages/members";
 import FamilySettings from "@/pages/settings";
 import PaymentList from "@/pages/payments";
 import Reports from "@/pages/reports";
+import AdminDashboard from "@/pages/admin-dashboard";
+import UserDashboard from "@/pages/user-dashboard";
 
 function Router() {
   return (
@@ -28,6 +30,8 @@ function Router() {
       <Route path="/settings" component={FamilySettings} />
       <Route path="/payments" component={PaymentList} />
       <Route path="/reports" component={Reports} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/profile" component={UserDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

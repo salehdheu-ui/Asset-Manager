@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { getLoans, getMembers, createLoan, updateLoanStatus, deleteLoan, getLoanRepayments, getDashboardSummary } from "@/lib/api";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
 import { HandCoins, Clock, AlertCircle, CheckCircle2, History, UserCheck, Trash2, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,7 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function Loans() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isGuardian = CURRENT_USER.role === 'guardian';
+  const { user } = useAuth();
+  const isGuardian = user?.role === 'admin';
   const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
   const [repayments, setRepayments] = useState<Record<string, any[]>>({});
   

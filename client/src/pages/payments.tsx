@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { getMembers, getContributions, createContribution, approveContribution } from "@/lib/api";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -29,7 +29,8 @@ export default function YearlyPaymentMatrix() {
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const isGuardian = CURRENT_USER.role === 'guardian';
+  const { user } = useAuth();
+  const isGuardian = user?.role === 'admin';
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members"],

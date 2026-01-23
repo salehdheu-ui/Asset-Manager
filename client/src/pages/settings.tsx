@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { FAMILY_MEMBERS as INITIAL_MEMBERS, CURRENT_USER as INITIAL_USER, FamilyMember } from "@/lib/mock-data";
+import { FAMILY_MEMBERS as INITIAL_MEMBERS, FamilyMember } from "@/lib/mock-data";
 import { UserCog, Save, UserPlus, Trash2, Home, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";

@@ -1,81 +1,138 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Fingerprint, Lock } from "lucide-react";
+import { Shield, Users, Wallet, Lock, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
 
 export default function Auth() {
+  const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [isScanning, setIsScanning] = useState(false);
 
-  const handleLogin = () => {
-    setIsScanning(true);
-    setTimeout(() => {
+  useEffect(() => {
+    if (!isLoading && user) {
       setLocation("/dashboard");
-    }, 2000);
-  };
+    }
+  }, [isLoading, user, setLocation]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const features = [
+    { icon: Shield, title: "حماية رأس المال", desc: "نظام 50/20/20/10 للتوزيع الآمن" },
+    { icon: Users, title: "إدارة العائلة", desc: "متابعة مساهمات كل فرد" },
+    { icon: Wallet, title: "الزكاة والمبرات", desc: "توثيق شفاف للإنفاق" },
+    { icon: Lock, title: "سجل الثقة", desc: "تاريخ لا يمكن تغييره" },
+  ];
 
   return (
-    <div className="min-h-screen bg-background relative flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-       {/* Background Texture */}
-      <div 
-        className="absolute inset-0 opacity-[0.05] pointer-events-none z-0"
-        style={{ backgroundImage: `url(${pattern})`, backgroundSize: '300px' }}
-      />
+    <div 
+      className="min-h-screen flex flex-col justify-between relative overflow-hidden" 
+      dir="rtl"
+      style={{ 
+        backgroundImage: `url(${pattern})`,
+        backgroundSize: '200px',
+        backgroundRepeat: 'repeat'
+      }}
+    >
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/95 via-background/90 to-background/95 z-0" />
 
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        className="relative z-10 w-full max-w-xs space-y-12"
-      >
-        <div className="space-y-6">
-          <div className="w-24 h-24 mx-auto rounded-full bg-primary/5 p-5 border border-primary/20 flex items-center justify-center">
-            <img src={logo} alt="Logo" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold font-heading text-primary mb-2">صندوق العائلة</h1>
-            <p className="text-muted-foreground font-sans">نظام التشغيل العائلي</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <button 
-            onClick={handleLogin}
-            className="group relative w-20 h-20 mx-auto flex items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
+      <div className="relative z-10 flex flex-col min-h-screen">
+        
+        {/* Header */}
+        <header className="p-6 text-center">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col items-center gap-4"
           >
-            {isScanning ? (
-              <motion.div 
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              >
-                <Fingerprint className="w-10 h-10" />
-              </motion.div>
-            ) : (
-              <Fingerprint className="w-10 h-10" />
-            )}
-            
-            {/* Scanning Ring */}
-            {isScanning && (
-              <motion.div 
-                className="absolute inset-0 rounded-full border-2 border-accent"
-                initial={{ opacity: 0, scale: 1 }}
-                animate={{ opacity: [0, 1, 0], scale: 1.5 }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              />
-            )}
-          </button>
-          <p className="text-sm text-muted-foreground animate-pulse">
-            {isScanning ? "جاري التحقق من الهوية..." : "اضغط للدخول الآمن"}
-          </p>
-        </div>
+            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center p-2 border border-primary/20 shadow-lg">
+              <img src={logo} alt="Family Fund OS" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-primary font-heading">صندوق العائلة</h1>
+              <p className="text-sm text-muted-foreground font-medium mt-1">نظام إدارة الثروة العائلية</p>
+            </div>
+          </motion.div>
+        </header>
 
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60 mt-12">
-          <Lock className="w-3 h-3" />
-          <span>محمي بواسطة السجل المؤتمن</span>
-        </div>
-      </motion.div>
+        {/* Main Content */}
+        <main className="flex-1 px-6 py-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="max-w-md mx-auto space-y-8"
+          >
+            {/* Hero Text */}
+            <div className="text-center space-y-4">
+              <h2 className="text-2xl font-bold text-foreground leading-relaxed">
+                المال وسيلة لخدمة العائلة،
+                <br />
+                <span className="text-primary">وليس غاية</span>
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                نظام متكامل لإدارة صندوق العائلة بالقيم الإسلامية
+                <br />
+                الشفافية • الثقة • الاستدامة
+              </p>
+            </div>
+
+            {/* Features Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {features.map((feature, idx) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
+                  className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 text-center hover:shadow-md transition-shadow"
+                >
+                  <div className="w-10 h-10 mx-auto rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-2">
+                    <feature.icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground">{feature.title}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-1">{feature.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Login Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="space-y-4"
+            >
+              <a
+                href="/api/login"
+                className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                <span>تسجيل الدخول</span>
+                <ArrowLeft className="w-5 h-5" />
+              </a>
+              <p className="text-center text-[10px] text-muted-foreground">
+                يمكنك الدخول باستخدام حساب Google أو GitHub أو البريد الإلكتروني
+              </p>
+            </motion.div>
+          </motion.div>
+        </main>
+
+        {/* Footer */}
+        <footer className="p-6 text-center">
+          <p className="text-[10px] text-muted-foreground">
+            صُمم للعائلات العُمانية • {new Date().getFullYear()}
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }

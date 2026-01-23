@@ -1,6 +1,6 @@
 import { useState } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { FAMILY_MEMBERS, CURRENT_USER, FamilyMember } from "@/lib/mock-data";
+import { FAMILY_MEMBERS, FamilyMember } from "@/lib/mock-data";
 import { Shield, ShieldAlert, User, Check, Settings2, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -12,9 +12,11 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Governance() {
-  const [activeRole, setActiveRole] = useState<'guardian' | 'custodian' | 'member'>(CURRENT_USER.role);
+  const { user } = useAuth();
+  const [activeRole, setActiveRole] = useState<'guardian' | 'custodian' | 'member'>(user?.role === 'admin' ? 'guardian' : 'member');
   const isGuardian = activeRole === 'guardian';
 
   const guardianPowers = [
@@ -37,7 +39,7 @@ export default function Governance() {
               <Shield className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-xl font-bold font-heading">{CURRENT_USER.name}</h2>
+              <h2 className="text-xl font-bold font-heading">{user?.firstName} {user?.lastName}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm font-medium text-primary">وضعية: {isGuardian ? 'الوصي' : 'عضو'}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
