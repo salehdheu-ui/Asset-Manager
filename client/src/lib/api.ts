@@ -140,13 +140,42 @@ export async function getAdminUsers(): Promise<User[]> {
   return res.json();
 }
 
+export async function createUser(data: { 
+  username: string; 
+  password: string; 
+  firstName?: string; 
+  lastName?: string;
+  email?: string;
+  role?: string;
+  memberId?: string;
+}): Promise<User> {
+  const res = await apiRequest("POST", "/api/admin/users", data);
+  return res.json();
+}
+
+export async function updateUser(id: string, data: Partial<{
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  memberId: string;
+}>): Promise<User> {
+  const res = await apiRequest("PUT", `/api/admin/users/${id}`, data);
+  return res.json();
+}
+
+export async function updateUserPassword(id: string, password: string): Promise<void> {
+  await apiRequest("PUT", `/api/admin/users/${id}/password`, { password });
+}
+
 export async function updateUserRole(id: string, role: string): Promise<User> {
-  const res = await apiRequest("PATCH", `/api/admin/users/${id}/role`, { role });
+  const res = await apiRequest("PUT", `/api/admin/users/${id}`, { role });
   return res.json();
 }
 
 export async function linkUserToMember(id: string, memberId: string): Promise<User> {
-  const res = await apiRequest("PATCH", `/api/admin/users/${id}/member`, { memberId });
+  const res = await apiRequest("PUT", `/api/admin/users/${id}`, { memberId });
   return res.json();
 }
 

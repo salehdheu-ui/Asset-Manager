@@ -21,14 +21,21 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret && process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  }
+
   return session({
-    secret: process.env.SESSION_SECRET || "family-fund-secret-key",
+    secret: sessionSecret || "dev-only-secret-" + Math.random().toString(36),
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });

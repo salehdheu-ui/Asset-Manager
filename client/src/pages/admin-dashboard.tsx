@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser } from "@/lib/api";
+import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon } from "lucide-react";
+import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
 export default function AdminDashboard() {
@@ -21,6 +21,17 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const { data: allUsers = [], isLoading: usersLoading, error } = useQuery({
     queryKey: ["admin-users"],
@@ -32,6 +43,34 @@ export default function AdminDashboard() {
   const { data: members = [] } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ title: "تم إنشاء المستخدم بنجاح" });
+      setNewUsername("");
+      setNewPassword("");
+      setNewFirstName("");
+      setNewLastName("");
+      setAddDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: err.message || "فشل إنشاء المستخدم", variant: "destructive" });
+    },
+  });
+
+  const updatePasswordMutation = useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) => updateUserPassword(id, password),
+    onSuccess: () => {
+      toast({ title: "تم تحديث كلمة المرور بنجاح" });
+      setPasswordUserId(null);
+      setNewUserPassword("");
+    },
+    onError: () => {
+      toast({ title: "فشل تحديث كلمة المرور", variant: "destructive" });
+    },
   });
 
   const updateRoleMutation = useMutation({
@@ -117,6 +156,111 @@ export default function AdminDashboard() {
           <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white/10 rounded-full blur-3xl" />
         </div>
 
+        {/* Add User Button */}
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogTrigger asChild>
+            <button 
+              className="w-full bg-green-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-green-600/20"
+              data-testid="button-add-user"
+            >
+              <Plus className="w-5 h-5" />
+              إضافة مستخدم جديد
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md font-sans" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="font-heading text-xl">إضافة مستخدم جديد</DialogTitle>
+            </DialogHeader>
+            <form 
+              className="py-4 space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newUsername && newPassword) {
+                  createUserMutation.mutate({
+                    username: newUsername,
+                    password: newPassword,
+                    firstName: newFirstName || undefined,
+                    lastName: newLastName || undefined,
+                  });
+                }
+              }}
+            >
+              <div className="space-y-2">
+                <label className="text-sm font-medium">اسم المستخدم *</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="أدخل اسم المستخدم"
+                  required
+                  data-testid="input-new-username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">كلمة المرور *</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="أدخل كلمة المرور"
+                    required
+                    data-testid="input-new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">الاسم الأول</label>
+                  <input
+                    type="text"
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="الاسم"
+                    data-testid="input-new-firstname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">اسم العائلة</label>
+                  <input
+                    type="text"
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="العائلة"
+                    data-testid="input-new-lastname"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={createUserMutation.isPending || !newUsername || !newPassword}
+                className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                data-testid="button-submit-new-user"
+              >
+                {createUserMutation.isPending ? (
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5" />
+                    إنشاء المستخدم
+                  </>
+                )}
+              </button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {/* Users List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -147,14 +291,14 @@ export default function AdminDashboard() {
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {(u.firstName?.[0] || u.email?.[0] || "U").toUpperCase()}
+                        {(u.firstName?.[0] || (u as any).username?.[0] || "U").toUpperCase()}
                       </div>
                     )}
                     <div className="flex-1">
                       <h4 className="font-bold text-sm leading-none">
-                        {u.firstName} {u.lastName}
+                        {u.firstName || (u as any).username} {u.lastName}
                       </h4>
-                      <p className="text-[10px] text-muted-foreground mt-1">{u.email}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">@{(u as any).username}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className={cn(
                           "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border flex items-center gap-1",
@@ -219,6 +363,78 @@ export default function AdminDashboard() {
                             ))}
                           </div>
                         </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Change Password */}
+                    <Dialog open={passwordUserId === u.id} onOpenChange={(open) => {
+                      if (!open) {
+                        setPasswordUserId(null);
+                        setNewUserPassword("");
+                      }
+                    }}>
+                      <DialogTrigger asChild>
+                        <button 
+                          onClick={() => setPasswordUserId(u.id)}
+                          className="p-2 bg-amber-600 text-white rounded-xl flex items-center justify-center active:scale-95 transition-transform"
+                          data-testid={`button-change-password-${u.id}`}
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md font-sans" dir="rtl">
+                        <DialogHeader>
+                          <DialogTitle className="font-heading text-xl">تغيير كلمة المرور</DialogTitle>
+                        </DialogHeader>
+                        <form 
+                          className="py-4 space-y-4"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (newUserPassword) {
+                              updatePasswordMutation.mutate({ id: u.id, password: newUserPassword });
+                            }
+                          }}
+                        >
+                          <p className="text-sm text-muted-foreground">
+                            تغيير كلمة المرور للمستخدم: <strong>{(u as any).username}</strong>
+                          </p>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">كلمة المرور الجديدة</label>
+                            <div className="relative">
+                              <input
+                                type={showChangePassword ? "text" : "password"}
+                                value={newUserPassword}
+                                onChange={(e) => setNewUserPassword(e.target.value)}
+                                className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                placeholder="أدخل كلمة المرور الجديدة"
+                                required
+                                data-testid="input-change-password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowChangePassword(!showChangePassword)}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                              >
+                                {showChangePassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={updatePasswordMutation.isPending || !newUserPassword}
+                            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                            data-testid="button-submit-password"
+                          >
+                            {updatePasswordMutation.isPending ? (
+                              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                            ) : (
+                              <>
+                                <Key className="w-5 h-5" />
+                                تحديث كلمة المرور
+                              </>
+                            )}
+                          </button>
+                        </form>
                       </DialogContent>
                     </Dialog>
 
