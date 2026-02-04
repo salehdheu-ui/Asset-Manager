@@ -17,8 +17,36 @@ async function fetchUser(): Promise<User | null> {
   return response.json();
 }
 
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+async function login(credentials: LoginCredentials): Promise<User> {
+  const response = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(credentials),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "فشل تسجيل الدخول");
+  }
+
+  return response.json();
+}
+
 async function logout(): Promise<void> {
-  window.location.href = "/api/logout";
+  const response = await fetch("/api/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  });
+  
+  if (!response.ok) {
+    throw new Error("فشل تسجيل الخروج");
+  }
 }
 
 export function useAuth() {
@@ -28,6 +56,13 @@ export function useAuth() {
     queryFn: fetchUser,
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/auth/user"], data);
+    },
   });
 
   const logoutMutation = useMutation({
@@ -41,6 +76,9 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
+    login: loginMutation.mutateAsync,
+    isLoggingIn: loginMutation.isPending,
+    loginError: loginMutation.error?.message,
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
   };
