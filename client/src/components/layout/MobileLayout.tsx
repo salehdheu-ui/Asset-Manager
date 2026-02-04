@@ -34,7 +34,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const familyName = localStorage.getItem("familyName") || "صندوق العائلة";
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية", desc: "نظرة عامة على الصندوق" },
@@ -168,15 +168,20 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                   </p>
                 </div>
                 
-                <a 
-                  href="/api/logout"
+                <button 
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                    setLocation("/");
+                  }}
                   className="w-full flex items-center gap-3 p-4 rounded-2xl text-destructive hover:bg-destructive/5 transition-all border border-transparent hover:border-destructive/10 font-bold text-sm"
+                  data-testid="button-logout"
                 >
                   <div className="p-2 rounded-xl bg-destructive/10">
                     <LogOut className="w-5 h-5" />
                   </div>
                   <span>تسجيل الخروج</span>
-                </a>
+                </button>
               </div>
             </motion.div>
           </>
