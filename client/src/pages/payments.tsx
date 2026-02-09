@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getMembers, getContributions, createContribution, approveContribution } from "@/lib/api";
+import { getMembers, getContributions, createContribution, approveContribution, deleteContribution } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   ChevronLeft, 
@@ -12,7 +12,9 @@ import {
   AlertCircle,
   Calendar,
   TrendingUp,
-  Coins
+  Coins,
+  Trash2,
+  XCircle
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -60,12 +62,33 @@ export default function YearlyPaymentMatrix() {
     },
   });
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [openDialogKey, setOpenDialogKey] = useState<string | null>(null);
+
   const approveMutation = useMutation({
     mutationFn: approveContribution,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contributions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast({ title: "تم اعتماد المساهمة بنجاح" });
+      setOpenDialogKey(null);
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as any)?.message || "تعذر اعتماد المساهمة", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteContribution,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      toast({ title: "تم حذف المساهمة بنجاح" });
+      setConfirmDeleteId(null);
+      setOpenDialogKey(null);
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as any)?.message || "تعذر حذف المساهمة", variant: "destructive" });
     },
   });
 
@@ -242,8 +265,13 @@ export default function YearlyPaymentMatrix() {
                       const amount = contribution ? Number(contribution.amount) : 0;
                       const isCurrentMonth = selectedYear === currentYear && month.id === currentMonth;
 
+                      const dialogKey = `${member.id}-${month.id}`;
+
                       return (
-                        <Dialog key={month.id}>
+                        <Dialog key={month.id} open={openDialogKey === dialogKey} onOpenChange={(open) => {
+                          setOpenDialogKey(open ? dialogKey : null);
+                          if (!open) setConfirmDeleteId(null);
+                        }}>
                           <DialogTrigger asChild>
                             <button 
                               className={cn(
@@ -299,10 +327,53 @@ export default function YearlyPaymentMatrix() {
 
                             <div className="py-6 space-y-4">
                               {isApproved ? (
-                                <div className="bg-emerald-50 text-emerald-800 p-8 rounded-[2rem] flex flex-col items-center gap-3 text-center border border-emerald-100">
-                                  <CheckCircle2 className="w-16 h-16 text-emerald-500" />
-                                  <div className="text-4xl font-mono font-bold tracking-tighter">{amount.toLocaleString()} <span className="text-base font-sans font-normal">ر.ع</span></div>
-                                  <p className="text-sm font-bold opacity-80">تم الاعتماد والتوثيق</p>
+                                <div className="space-y-4">
+                                  <div className="bg-emerald-50 text-emerald-800 p-8 rounded-[2rem] flex flex-col items-center gap-3 text-center border border-emerald-100">
+                                    <CheckCircle2 className="w-16 h-16 text-emerald-500" />
+                                    <div className="text-4xl font-mono font-bold tracking-tighter">{amount.toLocaleString()} <span className="text-base font-sans font-normal">ر.ع</span></div>
+                                    <p className="text-sm font-bold opacity-80">تم الاعتماد والتوثيق</p>
+                                  </div>
+
+                                  {isGuardian && contribution && (
+                                    <>
+                                      {confirmDeleteId === contribution.id ? (
+                                        <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 space-y-4">
+                                          <div className="flex items-center gap-2 text-destructive">
+                                            <AlertCircle className="w-5 h-5" />
+                                            <p className="text-sm font-bold">هل أنت متأكد من حذف هذه المساهمة؟</p>
+                                          </div>
+                                          <p className="text-xs text-muted-foreground leading-relaxed">سيتم حذف المبلغ المعتمد ({amount.toLocaleString()} ر.ع) نهائياً وإزالته من السجل.</p>
+                                          <div className="flex gap-3">
+                                            <button
+                                              onClick={() => deleteMutation.mutate(contribution.id)}
+                                              disabled={deleteMutation.isPending}
+                                              className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl font-bold hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                                              data-testid="button-confirm-delete-contribution"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                              {deleteMutation.isPending ? "جاري الحذف..." : "تأكيد الحذف"}
+                                            </button>
+                                            <button
+                                              onClick={() => setConfirmDeleteId(null)}
+                                              className="flex-1 bg-muted py-3 rounded-xl font-bold hover:bg-muted/80 transition-all active:scale-95"
+                                              data-testid="button-cancel-delete"
+                                            >
+                                              تراجع
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <button 
+                                          onClick={() => setConfirmDeleteId(contribution.id)}
+                                          className="w-full bg-destructive/10 text-destructive py-4 rounded-2xl font-bold hover:bg-destructive/20 transition-all flex items-center justify-center gap-2 text-base active:scale-95"
+                                          data-testid="button-delete-contribution"
+                                        >
+                                          <Trash2 className="w-5 h-5" />
+                                          حذف المبلغ المعتمد
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               ) : isPending ? (
                                 <div className="space-y-4">
@@ -313,15 +384,53 @@ export default function YearlyPaymentMatrix() {
                                   </div>
                                   
                                   {isGuardian && contribution && (
-                                    <button 
-                                      onClick={() => approveMutation.mutate(contribution.id)}
-                                      disabled={approveMutation.isPending}
-                                      className="w-full bg-primary text-primary-foreground py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-lg active:scale-95 disabled:opacity-50"
-                                      data-testid="button-approve-contribution"
-                                    >
-                                      <UserCheck className="w-6 h-6" />
-                                      اعتماد استلام المبلغ
-                                    </button>
+                                    <div className="space-y-3">
+                                      <button 
+                                        onClick={() => approveMutation.mutate(contribution.id)}
+                                        disabled={approveMutation.isPending}
+                                        className="w-full bg-primary text-primary-foreground py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-lg active:scale-95 disabled:opacity-50"
+                                        data-testid="button-approve-contribution"
+                                      >
+                                        <UserCheck className="w-6 h-6" />
+                                        اعتماد استلام المبلغ
+                                      </button>
+
+                                      {confirmDeleteId === contribution.id ? (
+                                        <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 space-y-4">
+                                          <div className="flex items-center gap-2 text-destructive">
+                                            <AlertCircle className="w-5 h-5" />
+                                            <p className="text-sm font-bold">هل أنت متأكد من إلغاء هذا الطلب؟</p>
+                                          </div>
+                                          <div className="flex gap-3">
+                                            <button
+                                              onClick={() => deleteMutation.mutate(contribution.id)}
+                                              disabled={deleteMutation.isPending}
+                                              className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl font-bold hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                                              data-testid="button-confirm-cancel-contribution"
+                                            >
+                                              <XCircle className="w-4 h-4" />
+                                              {deleteMutation.isPending ? "جاري الإلغاء..." : "تأكيد الإلغاء"}
+                                            </button>
+                                            <button
+                                              onClick={() => setConfirmDeleteId(null)}
+                                              className="flex-1 bg-muted py-3 rounded-xl font-bold hover:bg-muted/80 transition-all active:scale-95"
+                                              data-testid="button-keep-contribution"
+                                            >
+                                              تراجع
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <button 
+                                          onClick={() => setConfirmDeleteId(contribution.id)}
+                                          className="w-full bg-destructive/10 text-destructive py-4 rounded-2xl font-bold hover:bg-destructive/20 transition-all flex items-center justify-center gap-2 text-base active:scale-95"
+                                          data-testid="button-cancel-contribution"
+                                        >
+                                          <XCircle className="w-5 h-5" />
+                                          إلغاء الطلب
+                                        </button>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               ) : (

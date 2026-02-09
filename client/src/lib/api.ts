@@ -35,6 +35,10 @@ export async function createContribution(data: { memberId: string; year: number;
   return res.json();
 }
 
+export async function deleteContribution(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/contributions/${id}`);
+}
+
 export async function approveContribution(id: string): Promise<Contribution> {
   const res = await apiRequest("PATCH", `/api/contributions/${id}/approve`, {});
   return res.json();

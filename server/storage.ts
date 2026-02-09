@@ -23,6 +23,7 @@ export interface IStorage {
   getContributionsByYear(year: number): Promise<Contribution[]>;
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   approveContribution(id: string): Promise<Contribution | undefined>;
+  deleteContribution(id: string): Promise<void>;
 
   // Loans
   getLoans(): Promise<Loan[]>;
@@ -103,6 +104,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(contributions.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteContribution(id: string): Promise<void> {
+    await db.delete(contributions).where(eq(contributions.id, id));
   }
 
   // Loans

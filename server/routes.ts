@@ -159,6 +159,16 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/contributions/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const contribId = req.params.id as string;
+      await storage.deleteContribution(contribId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete contribution" });
+    }
+  });
+
   // ============= Loans =============
   app.get("/api/loans", isAuthenticated, async (req: any, res) => {
     try {
