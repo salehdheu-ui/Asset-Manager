@@ -109,6 +109,7 @@ export interface DashboardSummary {
   totalContributions: number;
   totalLoans: number;
   totalExpenses: number;
+  totalRepayments: number;
   netCapital: number;
   layers: Array<{
     id: string;

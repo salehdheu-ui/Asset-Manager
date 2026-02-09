@@ -399,6 +399,7 @@ export async function registerRoutes(
         totalContributions,
         totalLoans,
         totalExpenses,
+        totalRepayments,
         netCapital: capital,
         allocation,
         layers: [

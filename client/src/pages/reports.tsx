@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { getMembers, getContributions, getLoans, getExpenses, getLoanRepayments } from "@/lib/api";
@@ -98,6 +98,26 @@ export default function Reports() {
     };
   });
 
+  const [allRepaymentsTotals, setAllRepaymentsTotals] = useState(0);
+
+  useEffect(() => {
+    const approvedLoans = loans.filter(l => l.status === 'approved');
+    if (approvedLoans.length === 0) {
+      setAllRepaymentsTotals(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let total = 0;
+      for (const loan of approvedLoans) {
+        const reps = await getLoanRepayments(loan.id);
+        total += reps.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount), 0);
+      }
+      if (!cancelled) setAllRepaymentsTotals(total);
+    })();
+    return () => { cancelled = true; };
+  }, [loans]);
+
   const totalContributions = contributions.filter(c => c.status === 'approved').reduce((sum, c) => sum + Number(c.amount), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const totalLoans = loans.filter(l => l.status === 'approved').reduce((sum, l) => sum + Number(l.amount), 0);
@@ -123,7 +143,7 @@ export default function Reports() {
             </div>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">إجمالي المنصرف</p>
             <h4 className="text-xl font-bold font-mono text-primary mt-1">
-              {(totalExpenses + totalLoans).toLocaleString()} <span className="text-xs font-sans">ر.ع</span>
+              {(totalExpenses + totalLoans - allRepaymentsTotals).toLocaleString()} <span className="text-xs font-sans">ر.ع</span>
             </h4>
           </div>
         </div>
