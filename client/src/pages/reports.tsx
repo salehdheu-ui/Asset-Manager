@@ -85,6 +85,34 @@ export default function Reports() {
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const [allRepaymentsTotals, setAllRepaymentsTotals] = useState(0);
+  const [memberRepayments, setMemberRepayments] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const approvedLoans = loans.filter(l => l.status === 'approved');
+    if (approvedLoans.length === 0) {
+      setAllRepaymentsTotals(0);
+      setMemberRepayments({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let total = 0;
+      const perMember: Record<string, number> = {};
+      for (const loan of approvedLoans) {
+        const reps = await getLoanRepayments(loan.id);
+        const paidSum = reps.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount), 0);
+        total += paidSum;
+        perMember[loan.memberId] = (perMember[loan.memberId] || 0) + paidSum;
+      }
+      if (!cancelled) {
+        setAllRepaymentsTotals(total);
+        setMemberRepayments(perMember);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loans]);
+
   // Member stats
   const memberStats = members.map(m => {
     const memberContributions = contributions.filter(c => c.memberId === m.id && c.status === 'approved');
@@ -93,30 +121,10 @@ export default function Reports() {
     return {
       ...m,
       totalPaid: memberContributions.reduce((sum, c) => sum + Number(c.amount), 0),
-      totalBorrowed: memberLoans.reduce((sum, l) => sum + Number(l.amount), 0),
+      totalBorrowed: memberLoans.reduce((sum, l) => sum + Number(l.amount), 0) - (memberRepayments[m.id] || 0),
       loanCount: memberLoans.length
     };
   });
-
-  const [allRepaymentsTotals, setAllRepaymentsTotals] = useState(0);
-
-  useEffect(() => {
-    const approvedLoans = loans.filter(l => l.status === 'approved');
-    if (approvedLoans.length === 0) {
-      setAllRepaymentsTotals(0);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      let total = 0;
-      for (const loan of approvedLoans) {
-        const reps = await getLoanRepayments(loan.id);
-        total += reps.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount), 0);
-      }
-      if (!cancelled) setAllRepaymentsTotals(total);
-    })();
-    return () => { cancelled = true; };
-  }, [loans]);
 
   const totalContributions = contributions.filter(c => c.status === 'approved').reduce((sum, c) => sum + Number(c.amount), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
