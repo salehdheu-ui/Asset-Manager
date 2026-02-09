@@ -96,6 +96,20 @@ export const insertFamilySettingsSchema = createInsertSchema(familySettings).omi
 export type InsertFamilySettings = z.infer<typeof insertFamilySettingsSchema>;
 export type FamilySettings = typeof familySettings.$inferSelect;
 
+// Fund Adjustments (admin direct deposits/withdrawals)
+export const fundAdjustments = pgTable("fund_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // 'deposit' | 'withdrawal'
+  amount: decimal("amount", { precision: 12, scale: 3 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: varchar("created_by"),
+});
+
+export const insertFundAdjustmentSchema = createInsertSchema(fundAdjustments).omit({ id: true, createdAt: true });
+export type InsertFundAdjustment = z.infer<typeof insertFundAdjustmentSchema>;
+export type FundAdjustment = typeof fundAdjustments.$inferSelect;
+
 // Capital Allocations (yearly locked allocations)
 export const capitalAllocations = pgTable("capital_allocations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
