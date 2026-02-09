@@ -112,6 +112,8 @@ export interface DashboardSummary {
     percentage: number;
     amount: number;
     locked: boolean;
+    used?: number;
+    available?: number;
   }>;
 }
 

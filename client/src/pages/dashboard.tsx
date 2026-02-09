@@ -41,7 +41,15 @@ export default function Dashboard() {
   const totalContributions = summary?.totalContributions || 0;
   const totalExpenses = (summary?.totalExpenses || 0) + (summary?.totalLoans || 0);
 
-  const layers = (summary?.layers || []).map((layer) => ({
+  const defaultLayers = [
+    { id: "protected", name: "رأس المال المحمي", percentage: 45, amount: totalCapital * 0.45, locked: true, used: 0, available: 0 },
+    { id: "emergency", name: "احتياطي الطوارئ", percentage: 15, amount: totalCapital * 0.15, locked: true, used: 0, available: totalCapital * 0.15 },
+    { id: "flexible", name: "رأس المال المرن", percentage: 20, amount: totalCapital * 0.20, locked: false, used: 0, available: totalCapital * 0.20 },
+    { id: "growth", name: "رأس مال النمو", percentage: 20, amount: totalCapital * 0.20, locked: true, used: 0, available: totalCapital * 0.20 },
+  ];
+
+  const rawLayers = summary?.layers && summary.layers.length > 0 ? summary.layers : defaultLayers;
+  const layers = rawLayers.map((layer) => ({
     ...layer,
     arabicName: layerMeta[layer.id]?.arabicName || layer.name,
     color: layerMeta[layer.id]?.color || "bg-gray-500",
