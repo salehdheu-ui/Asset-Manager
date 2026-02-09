@@ -36,18 +36,20 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
   const familyName = localStorage.getItem("familyName") || "صندوق العائلة";
   const { user, logout } = useAuth();
 
+  const isAdmin = user?.role === 'admin';
+
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية", desc: "نظرة عامة على الصندوق" },
     { href: "/payments", icon: CreditCard, label: "المساهمات", desc: "سجل الدفع السنوي" },
     { href: "/expenses", icon: Wallet, label: "الإنفاق", desc: "الزكاة والمصروفات" },
     { href: "/loans", icon: HandCoins, label: "السلف", desc: "طلبات القروض العائلية" },
-    { href: "/members", icon: Users, label: "الأعضاء", desc: "إدارة أفراد العائلة" },
+    ...(isAdmin ? [{ href: "/members", icon: Users, label: "الأعضاء", desc: "إدارة أفراد العائلة" }] : []),
     { href: "/reports", icon: FileText, label: "التقارير", desc: "الكشوفات والبيانات المالية" },
     { href: "/profile", icon: User, label: "حسابي", desc: "إعدادات الحساب الشخصي" },
-    ...(user?.role === 'admin' ? [{ href: "/admin", icon: Shield, label: "الإدارة", desc: "إدارة المستخدمين والصلاحيات" }] : []),
+    ...(isAdmin ? [{ href: "/admin", icon: Shield, label: "الإدارة", desc: "إدارة المستخدمين والصلاحيات" }] : []),
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة", desc: "قوانين الصندوق والقرارات" },
     { href: "/ledger", icon: History, label: "السجل", desc: "سجل الثقة والعمليات" },
-    { href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" },
+    ...(isAdmin ? [{ href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" }] : []),
   ];
 
   const bottomNavItems = navItems.slice(0, 5);
