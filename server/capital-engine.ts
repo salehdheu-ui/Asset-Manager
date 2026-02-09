@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { contributions, loans, expenses, familySettings, capitalAllocations } from "@shared/schema";
+import { contributions, loans, expenses, familySettings, capitalAllocations, loanRepayments } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface AllocationResult {
@@ -55,7 +55,18 @@ async function computeNetAssetsForYear(year: number): Promise<number> {
   });
   const totalExpenses = yearExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  return Math.max(0, totalContribs - totalLoans - totalExpenses);
+  const yearLoanIds = yearLoans.map(l => l.id);
+  let totalRepayments = 0;
+  for (const loanId of yearLoanIds) {
+    const reps = await db.select().from(loanRepayments)
+      .where(and(eq(loanRepayments.loanId, loanId), eq(loanRepayments.status, "paid")));
+    totalRepayments += reps.filter(r => {
+      const d = r.paidAt;
+      return d && d >= yearStart && d <= yearEnd;
+    }).reduce((sum, r) => sum + Number(r.amount), 0);
+  }
+
+  return Math.max(0, totalContribs - totalLoans + totalRepayments - totalExpenses);
 }
 
 async function computeUsedAmounts(year: number) {
@@ -79,8 +90,19 @@ async function computeUsedAmounts(year: number) {
   const emergencyExpenses = yearExpenses.filter(e => e.category === 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
   const generalExpenses = yearExpenses.filter(e => e.category !== 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
 
+  const yearLoanIds = yearLoans.map(l => l.id);
+  let totalRepayments = 0;
+  for (const loanId of yearLoanIds) {
+    const reps = await db.select().from(loanRepayments)
+      .where(and(eq(loanRepayments.loanId, loanId), eq(loanRepayments.status, "paid")));
+    totalRepayments += reps.filter(r => {
+      const d = r.paidAt;
+      return d && d >= yearStart && d <= yearEnd;
+    }).reduce((sum, r) => sum + Number(r.amount), 0);
+  }
+
   return {
-    flexibleUsed: loansTotal + generalExpenses,
+    flexibleUsed: Math.max(0, loansTotal - totalRepayments + generalExpenses),
     growthUsed: 0,
     emergencyUsed: emergencyExpenses,
   };

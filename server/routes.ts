@@ -274,13 +274,15 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/repayments/:id/pay", isAuthenticated, async (req, res) => {
+  app.patch("/api/repayments/:id/pay", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const repaymentId = req.params.id as string;
       const repayment = await storage.markRepaymentPaid(repaymentId);
       if (!repayment) {
         return res.status(404).json({ error: "Repayment not found" });
       }
+      const paidYear = repayment.paidAt ? repayment.paidAt.getFullYear() : new Date().getFullYear();
+      await rebalanceYear(paidYear);
       res.json(repayment);
     } catch (error) {
       res.status(500).json({ error: "Failed to mark repayment as paid" });

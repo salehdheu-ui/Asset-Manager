@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getLoans, getMembers, createLoan, updateLoanStatus, deleteLoan, getLoanRepayments, getDashboardSummary } from "@/lib/api";
+import { getLoans, getMembers, createLoan, updateLoanStatus, deleteLoan, getLoanRepayments, markRepaymentPaid, getDashboardSummary } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { HandCoins, Clock, AlertCircle, CheckCircle2, History, UserCheck, Trash2, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { HandCoins, Clock, AlertCircle, CheckCircle2, History, UserCheck, Trash2, X, Calendar, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -101,6 +101,25 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast({ title: "تم حذف السجل" });
+    },
+    onError: (error) => {
+      toast({
+        title: "حدث خطأ",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const repayMutation = useMutation({
+    mutationFn: markRepaymentPaid,
+    onSuccess: async (updatedRepayment) => {
+      const loanId = updatedRepayment.loanId;
+      const freshData = await getLoanRepayments(loanId);
+      setRepayments(prev => ({ ...prev, [loanId]: freshData }));
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      toast({ title: "تم تسجيل سداد القسط وإرجاع المبلغ للصندوق" });
     },
     onError: (error) => {
       toast({
@@ -407,28 +426,60 @@ export default function Loans() {
                             <div className="pt-3 space-y-3">
                               <div className="flex items-center justify-between px-1">
                                 <span className="text-[10px] font-bold text-muted-foreground">جدولة الأقساط ({loan.repaymentMonths} شهر)</span>
+                                <span className="text-[10px] font-bold text-emerald-600">
+                                  {repayments[loan.id].filter(r => r.status === 'paid').length}/{repayments[loan.id].length} مدفوع
+                                </span>
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {repayments[loan.id].slice(0, 4).map((step) => (
-                                  <div key={step.id} className="bg-muted/30 p-2 rounded-xl border border-border/30 flex justify-between items-center">
-                                    <div>
-                                      <div className="text-[8px] text-muted-foreground font-bold uppercase">القسط {step.installmentNumber}</div>
-                                      <div className="text-xs font-bold font-mono">{Number(step.amount).toFixed(3)} ر.ع</div>
+                              <div className="space-y-2">
+                                {repayments[loan.id].map((step) => (
+                                  <div key={step.id} className={cn(
+                                    "p-3 rounded-xl border flex justify-between items-center",
+                                    step.status === 'paid' ? "bg-emerald-50/50 border-emerald-200/50" : "bg-muted/30 border-border/30"
+                                  )}>
+                                    <div className="flex items-center gap-2">
+                                      <div className={cn(
+                                        "w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold",
+                                        step.status === 'paid' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+                                      )}>
+                                        {step.installmentNumber}
+                                      </div>
+                                      <div>
+                                        <div className="text-xs font-bold font-mono">{Number(step.amount).toFixed(3)} <span className="text-[9px] font-sans text-muted-foreground">ر.ع</span></div>
+                                        <div className="text-[8px] text-muted-foreground">
+                                          {step.status === 'paid' && step.paidAt 
+                                            ? `مدفوع ${new Date(step.paidAt).toLocaleDateString('ar-OM')}` 
+                                            : step.dueDate 
+                                              ? `استحقاق ${new Date(step.dueDate).toLocaleDateString('ar-OM')}`
+                                              : 'مجدول'}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <span className={cn(
-                                      "text-[7px] font-bold px-1.5 py-0.5 rounded-full",
-                                      step.status === 'paid' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
-                                    )}>
-                                      {step.status === 'paid' ? 'مدفوع' : 'مجدول'}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {step.status === 'paid' ? (
+                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3" /> مدفوع
+                                        </span>
+                                      ) : (
+                                        isGuardian ? (
+                                          <button
+                                            onClick={() => repayMutation.mutate(step.id)}
+                                            disabled={repayMutation.isPending}
+                                            className="text-[9px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50"
+                                            data-testid={`button-repay-${step.id}`}
+                                          >
+                                            <RotateCcw className="w-3.5 h-3.5" />
+                                            تسديد
+                                          </button>
+                                        ) : (
+                                          <span className="text-[9px] font-bold text-amber-600 bg-amber-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
+                                            <Clock className="w-3 h-3" /> مجدول
+                                          </span>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
-                              {repayments[loan.id].length > 4 && (
-                                <p className="text-[8px] text-muted-foreground text-center italic">
-                                  تم عرض أول 4 أقساط • الإجمالي {repayments[loan.id].length} قسطاً
-                                </p>
-                              )}
                             </div>
                           </motion.div>
                         )}
