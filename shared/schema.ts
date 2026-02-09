@@ -86,12 +86,33 @@ export const familySettings = pgTable("family_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   familyName: text("family_name").notNull().default("صندوق العائلة"),
   currency: text("currency").notNull().default("ر.ع"),
-  protectedPercent: integer("protected_percent").notNull().default(50),
-  emergencyPercent: integer("emergency_percent").notNull().default(20),
+  protectedPercent: integer("protected_percent").notNull().default(45),
+  emergencyPercent: integer("emergency_percent").notNull().default(15),
   flexiblePercent: integer("flexible_percent").notNull().default(20),
-  growthPercent: integer("growth_percent").notNull().default(10),
+  growthPercent: integer("growth_percent").notNull().default(20),
 });
 
 export const insertFamilySettingsSchema = createInsertSchema(familySettings).omit({ id: true });
 export type InsertFamilySettings = z.infer<typeof insertFamilySettingsSchema>;
 export type FamilySettings = typeof familySettings.$inferSelect;
+
+// Capital Allocations (yearly locked allocations)
+export const capitalAllocations = pgTable("capital_allocations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  year: integer("year").notNull(),
+  netAssets: decimal("net_assets", { precision: 12, scale: 3 }).notNull().default("0"),
+  protectedAmount: decimal("protected_amount", { precision: 12, scale: 3 }).notNull().default("0"),
+  emergencyAmount: decimal("emergency_amount", { precision: 12, scale: 3 }).notNull().default("0"),
+  flexibleAmount: decimal("flexible_amount", { precision: 12, scale: 3 }).notNull().default("0"),
+  growthAmount: decimal("growth_amount", { precision: 12, scale: 3 }).notNull().default("0"),
+  flexibleUsed: decimal("flexible_used", { precision: 12, scale: 3 }).notNull().default("0"),
+  growthUsed: decimal("growth_used", { precision: 12, scale: 3 }).notNull().default("0"),
+  emergencyUsed: decimal("emergency_used", { precision: 12, scale: 3 }).notNull().default("0"),
+  lockedAt: timestamp("locked_at").defaultNow(),
+  resetAt: timestamp("reset_at"),
+  resetBy: varchar("reset_by"),
+});
+
+export const insertCapitalAllocationSchema = createInsertSchema(capitalAllocations).omit({ id: true, lockedAt: true, resetAt: true, resetBy: true });
+export type InsertCapitalAllocation = z.infer<typeof insertCapitalAllocationSchema>;
+export type CapitalAllocation = typeof capitalAllocations.$inferSelect;

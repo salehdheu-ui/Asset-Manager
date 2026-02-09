@@ -7,6 +7,7 @@ import { setupAuth, isAuthenticated, isAdmin, createDefaultAdmin } from "./auth"
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
+import { rebalanceYear, checkLoanTransaction, checkExpenseTransaction, resetYearAllocation, getAllocationForYear } from "./capital-engine";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -151,6 +152,7 @@ export async function registerRoutes(
       if (!contribution) {
         return res.status(404).json({ error: "Contribution not found" });
       }
+      await rebalanceYear(contribution.year);
       res.json(contribution);
     } catch (error) {
       res.status(500).json({ error: "Failed to approve contribution" });
@@ -178,9 +180,20 @@ export async function registerRoutes(
   app.post("/api/loans", isAuthenticated, async (req, res) => {
     try {
       const data = insertLoanSchema.parse(req.body);
+      const currentYear = new Date().getFullYear();
+      
+      const check = await checkLoanTransaction(Number(data.amount), currentYear);
+      if (!check.allowed) {
+        return res.status(403).json({ 
+          error: check.reason,
+          layer: check.layer,
+          available: check.available,
+          requested: check.requested
+        });
+      }
+
       const loan = await storage.createLoan(data);
       
-      // Create repayment schedule when loan is approved
       if (data.repaymentMonths && data.repaymentMonths > 0) {
         const monthlyAmount = Number(data.amount) / data.repaymentMonths;
         const repayments = [];
@@ -199,6 +212,8 @@ export async function registerRoutes(
         }
         await storage.createLoanRepayments(repayments as any);
       }
+
+      await rebalanceYear(currentYear);
       
       res.status(201).json(loan);
     } catch (error) {
@@ -275,7 +290,20 @@ export async function registerRoutes(
   app.post("/api/expenses", isAuthenticated, async (req, res) => {
     try {
       const data = insertExpenseSchema.parse(req.body);
+      const currentYear = new Date().getFullYear();
+
+      const check = await checkExpenseTransaction(Number(data.amount), data.category, currentYear);
+      if (!check.allowed) {
+        return res.status(403).json({ 
+          error: check.reason,
+          layer: check.layer,
+          available: check.available,
+          requested: Number(data.amount)
+        });
+      }
+
       const expense = await storage.createExpense(data);
+      await rebalanceYear(currentYear);
       res.status(201).json(expense);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -324,6 +352,7 @@ export async function registerRoutes(
   // ============= Dashboard Summary =============
   app.get("/api/dashboard/summary", async (req, res) => {
     try {
+      const currentYear = new Date().getFullYear();
       const [allContributions, allLoans, allExpenses, settings] = await Promise.all([
         storage.getContributions(),
         storage.getLoans(),
@@ -341,22 +370,69 @@ export async function registerRoutes(
       const netCapital = totalContributions - totalLoans - totalExpenses;
       const capital = Math.max(0, netCapital);
 
-      const percents = settings || { protectedPercent: 50, emergencyPercent: 20, flexiblePercent: 20, growthPercent: 10 };
+      const percents = settings || { protectedPercent: 45, emergencyPercent: 15, flexiblePercent: 20, growthPercent: 20 };
+
+      const allocation = await getAllocationForYear(currentYear);
 
       res.json({
         totalContributions,
         totalLoans,
         totalExpenses,
         netCapital: capital,
+        allocation,
         layers: [
-          { id: "protected", name: "رأس المال المحمي", percentage: percents.protectedPercent, amount: (capital * percents.protectedPercent / 100), locked: true },
-          { id: "emergency", name: "احتياطي الطوارئ", percentage: percents.emergencyPercent, amount: (capital * percents.emergencyPercent / 100), locked: true },
-          { id: "flexible", name: "رأس المال المرن", percentage: percents.flexiblePercent, amount: (capital * percents.flexiblePercent / 100), locked: false },
-          { id: "growth", name: "رأس مال النمو", percentage: percents.growthPercent, amount: (capital * percents.growthPercent / 100), locked: true },
+          { id: "protected", name: "رأس المال المحمي", percentage: percents.protectedPercent, amount: (capital * percents.protectedPercent / 100), locked: true, used: 0, available: 0 },
+          { id: "emergency", name: "احتياطي الطوارئ", percentage: percents.emergencyPercent, amount: (capital * percents.emergencyPercent / 100), locked: true, used: allocation.emergency.used, available: allocation.emergency.available },
+          { id: "flexible", name: "رأس المال المرن", percentage: percents.flexiblePercent, amount: (capital * percents.flexiblePercent / 100), locked: false, used: allocation.flexible.used, available: allocation.flexible.available },
+          { id: "growth", name: "رأس مال النمو", percentage: percents.growthPercent, amount: (capital * percents.growthPercent / 100), locked: true, used: allocation.growth.used, available: allocation.growth.available },
         ]
       });
     } catch (error) {
+      console.error("Dashboard summary error:", error);
       res.status(500).json({ error: "Failed to fetch dashboard summary" });
+    }
+  });
+
+  // ============= Capital Allocation =============
+  app.get("/api/allocation/:year", isAuthenticated, async (req, res) => {
+    try {
+      const year = Number(req.params.year);
+      const allocation = await getAllocationForYear(year);
+      res.json(allocation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch allocation" });
+    }
+  });
+
+  app.post("/api/allocation/:year/reset", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const year = Number(req.params.year);
+      const allocation = await resetYearAllocation(year, req.user.id);
+      res.json(allocation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset allocation" });
+    }
+  });
+
+  app.post("/api/allocation/check-loan", isAuthenticated, async (req, res) => {
+    try {
+      const { amount } = req.body;
+      const currentYear = new Date().getFullYear();
+      const check = await checkLoanTransaction(Number(amount), currentYear);
+      res.json(check);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check loan" });
+    }
+  });
+
+  app.post("/api/allocation/check-expense", isAuthenticated, async (req, res) => {
+    try {
+      const { amount, category } = req.body;
+      const currentYear = new Date().getFullYear();
+      const check = await checkExpenseTransaction(Number(amount), category, currentYear);
+      res.json(check);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check expense" });
     }
   });
 
