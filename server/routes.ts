@@ -382,7 +382,13 @@ export async function registerRoutes(
       const totalDeposits = allAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
       const totalWithdrawals = allAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
 
-      const netCapital = totalContributions + totalDeposits - totalWithdrawals - totalLoans - totalExpenses;
+      let totalRepayments = 0;
+      for (const loan of approvedLoans) {
+        const reps = await storage.getLoanRepayments(loan.id);
+        totalRepayments += reps.filter(r => r.status === 'paid').reduce((sum, r) => sum + Number(r.amount), 0);
+      }
+
+      const netCapital = totalContributions + totalDeposits - totalWithdrawals - totalLoans + totalRepayments - totalExpenses;
       const capital = Math.max(0, netCapital);
 
       const percents = settings || { protectedPercent: 45, emergencyPercent: 15, flexiblePercent: 20, growthPercent: 20 };
