@@ -3,7 +3,7 @@ import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings
 
 // Members
 export async function getMembers(): Promise<Member[]> {
-  const res = await fetch("/api/members");
+  const res = await fetch("/api/members", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch members");
   return res.json();
 }
@@ -25,7 +25,7 @@ export async function deleteMember(id: string): Promise<void> {
 // Contributions
 export async function getContributions(year?: number): Promise<Contribution[]> {
   const url = year ? `/api/contributions?year=${year}` : "/api/contributions";
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch contributions");
   return res.json();
 }
@@ -42,7 +42,7 @@ export async function approveContribution(id: string): Promise<Contribution> {
 
 // Loans
 export async function getLoans(): Promise<Loan[]> {
-  const res = await fetch("/api/loans");
+  const res = await fetch("/api/loans", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch loans");
   return res.json();
 }
@@ -62,7 +62,7 @@ export async function deleteLoan(id: string): Promise<void> {
 }
 
 export async function getLoanRepayments(loanId: string): Promise<LoanRepayment[]> {
-  const res = await fetch(`/api/loans/${loanId}/repayments`);
+  const res = await fetch(`/api/loans/${loanId}/repayments`, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch repayments");
   return res.json();
 }
@@ -74,7 +74,7 @@ export async function markRepaymentPaid(id: string): Promise<LoanRepayment> {
 
 // Expenses
 export async function getExpenses(): Promise<Expense[]> {
-  const res = await fetch("/api/expenses");
+  const res = await fetch("/api/expenses", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch expenses");
   return res.json();
 }
@@ -90,7 +90,7 @@ export async function deleteExpense(id: string): Promise<void> {
 
 // Settings
 export async function getSettings(): Promise<FamilySettings> {
-  const res = await fetch("/api/settings");
+  const res = await fetch("/api/settings", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch settings");
   return res.json();
 }
@@ -118,7 +118,7 @@ export interface DashboardSummary {
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const res = await fetch("/api/dashboard/summary");
+  const res = await fetch("/api/dashboard/summary", { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch dashboard summary");
   return res.json();
 }
