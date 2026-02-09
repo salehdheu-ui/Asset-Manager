@@ -4,7 +4,8 @@ import {
   type Loan, type InsertLoan, loans,
   type LoanRepayment, type InsertLoanRepayment, loanRepayments,
   type Expense, type InsertExpense, expenses,
-  type FamilySettings, type InsertFamilySettings, familySettings
+  type FamilySettings, type InsertFamilySettings, familySettings,
+  type FundAdjustment, type InsertFundAdjustment, fundAdjustments
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -41,6 +42,11 @@ export interface IStorage {
   getExpenses(): Promise<Expense[]>;
   createExpense(expense: InsertExpense): Promise<Expense>;
   deleteExpense(id: string): Promise<void>;
+
+  // Fund Adjustments
+  getFundAdjustments(): Promise<FundAdjustment[]>;
+  createFundAdjustment(adjustment: InsertFundAdjustment): Promise<FundAdjustment>;
+  deleteFundAdjustment(id: string): Promise<void>;
 
   // Family Settings
   getFamilySettings(): Promise<FamilySettings | undefined>;
@@ -168,6 +174,20 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpense(id: string): Promise<void> {
     await db.delete(expenses).where(eq(expenses.id, id));
+  }
+
+  // Fund Adjustments
+  async getFundAdjustments(): Promise<FundAdjustment[]> {
+    return await db.select().from(fundAdjustments).orderBy(desc(fundAdjustments.createdAt));
+  }
+
+  async createFundAdjustment(adjustment: InsertFundAdjustment): Promise<FundAdjustment> {
+    const [created] = await db.insert(fundAdjustments).values(adjustment).returning();
+    return created;
+  }
+
+  async deleteFundAdjustment(id: string): Promise<void> {
+    await db.delete(fundAdjustments).where(eq(fundAdjustments.id, id));
   }
 
   // Family Settings

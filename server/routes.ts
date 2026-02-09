@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMemberSchema, insertContributionSchema, insertLoanSchema, insertExpenseSchema, insertFamilySettingsSchema } from "@shared/schema";
+import { insertMemberSchema, insertContributionSchema, insertLoanSchema, insertExpenseSchema, insertFamilySettingsSchema, insertFundAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, isAuthenticated, isAdmin, createDefaultAdmin } from "./auth";
 import { db } from "./db";
@@ -365,11 +365,12 @@ export async function registerRoutes(
   app.get("/api/dashboard/summary", async (req, res) => {
     try {
       const currentYear = new Date().getFullYear();
-      const [allContributions, allLoans, allExpenses, settings] = await Promise.all([
+      const [allContributions, allLoans, allExpenses, settings, allAdjustments] = await Promise.all([
         storage.getContributions(),
         storage.getLoans(),
         storage.getExpenses(),
-        storage.getFamilySettings()
+        storage.getFamilySettings(),
+        storage.getFundAdjustments()
       ]);
 
       const approvedContributions = allContributions.filter(c => c.status === "approved");
@@ -378,8 +379,10 @@ export async function registerRoutes(
       const totalContributions = approvedContributions.reduce((sum, c) => sum + Number(c.amount), 0);
       const totalLoans = approvedLoans.reduce((sum, l) => sum + Number(l.amount), 0);
       const totalExpenses = allExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+      const totalDeposits = allAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
+      const totalWithdrawals = allAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
 
-      const netCapital = totalContributions - totalLoans - totalExpenses;
+      const netCapital = totalContributions + totalDeposits - totalWithdrawals - totalLoans - totalExpenses;
       const capital = Math.max(0, netCapital);
 
       const percents = settings || { protectedPercent: 45, emergencyPercent: 15, flexiblePercent: 20, growthPercent: 20 };
@@ -402,6 +405,50 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Dashboard summary error:", error);
       res.status(500).json({ error: "Failed to fetch dashboard summary" });
+    }
+  });
+
+  // ============= Fund Adjustments (Admin) =============
+  app.get("/api/fund-adjustments", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const adjustments = await storage.getFundAdjustments();
+      res.json(adjustments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch fund adjustments" });
+    }
+  });
+
+  app.post("/api/fund-adjustments", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const data = insertFundAdjustmentSchema.parse({
+        ...req.body,
+        createdBy: req.user?.id,
+      });
+      if (!['deposit', 'withdrawal'].includes(data.type)) {
+        return res.status(400).json({ error: "Invalid type" });
+      }
+      const adjustment = await storage.createFundAdjustment(data);
+      const currentYear = new Date().getFullYear();
+      await rebalanceYear(currentYear);
+      res.status(201).json(adjustment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create fund adjustment" });
+      }
+    }
+  });
+
+  app.delete("/api/fund-adjustments/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = req.params.id as string;
+      await storage.deleteFundAdjustment(id);
+      const currentYear = new Date().getFullYear();
+      await rebalanceYear(currentYear);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete fund adjustment" });
     }
   });
 

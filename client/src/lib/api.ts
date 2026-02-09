@@ -1,5 +1,5 @@
 import { apiRequest } from "./queryClient";
-import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings, User } from "@shared/schema";
+import type { Member, Contribution, Loan, LoanRepayment, Expense, FamilySettings, User, FundAdjustment } from "@shared/schema";
 
 // Members
 export async function getMembers(): Promise<Member[]> {
@@ -187,4 +187,20 @@ export async function linkUserToMember(id: string, memberId: string): Promise<Us
 
 export async function deleteUser(id: string): Promise<void> {
   await apiRequest("DELETE", `/api/admin/users/${id}`);
+}
+
+// Fund Adjustments (Admin)
+export async function getFundAdjustments(): Promise<FundAdjustment[]> {
+  const res = await fetch("/api/fund-adjustments", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch fund adjustments");
+  return res.json();
+}
+
+export async function createFundAdjustment(data: { type: string; amount: string; description?: string }): Promise<FundAdjustment> {
+  const res = await apiRequest("POST", "/api/fund-adjustments", data);
+  return res.json();
+}
+
+export async function deleteFundAdjustment(id: string): Promise<void> {
+  await apiRequest("DELETE", `/api/fund-adjustments/${id}`);
 }

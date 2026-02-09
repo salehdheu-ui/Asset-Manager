@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser } from "@/lib/api";
+import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser, getFundAdjustments, createFundAdjustment, deleteFundAdjustment } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff } from "lucide-react";
+import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff, Wallet, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,11 @@ export default function AdminDashboard() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [showChangePassword, setShowChangePassword] = useState(false);
 
+  const [adjustType, setAdjustType] = useState<"deposit" | "withdrawal">("deposit");
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustDescription, setAdjustDescription] = useState("");
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+
   const { data: allUsers = [], isLoading: usersLoading, error } = useQuery({
     queryKey: ["admin-users"],
     queryFn: getAdminUsers,
@@ -44,6 +49,39 @@ export default function AdminDashboard() {
   const { data: members = [] } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
+  });
+
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ["fund-adjustments"],
+    queryFn: getFundAdjustments,
+    enabled: !!user,
+  });
+
+  const createAdjustmentMutation = useMutation({
+    mutationFn: createFundAdjustment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fund-adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      toast({ title: adjustType === "deposit" ? "تم إيداع المبلغ بنجاح" : "تم سحب المبلغ بنجاح" });
+      setAdjustAmount("");
+      setAdjustDescription("");
+      setAdjustDialogOpen(false);
+    },
+    onError: () => {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    },
+  });
+
+  const deleteAdjustmentMutation = useMutation({
+    mutationFn: deleteFundAdjustment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fund-adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      toast({ title: "تم حذف العملية" });
+    },
+    onError: () => {
+      toast({ title: "فشل حذف العملية", variant: "destructive" });
+    },
   });
 
   const createUserMutation = useMutation({
@@ -262,6 +300,161 @@ export default function AdminDashboard() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Fund Adjustments Section */}
+        <div className="bg-amber-600 text-white p-6 rounded-[2rem] relative overflow-hidden shadow-lg shadow-amber-600/20">
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+              <Wallet className="w-8 h-8" />
+              <h2 className="text-xl font-bold">التحكم المباشر بالصندوق</h2>
+            </div>
+            <p className="text-sm opacity-80">إيداع أو سحب أي مبلغ بصلاحية مطلقة</p>
+          </div>
+          <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => { setAdjustType("deposit"); setAdjustDialogOpen(true); }}
+            className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-green-600/20"
+            data-testid="button-fund-deposit"
+          >
+            <ArrowDownCircle className="w-5 h-5" />
+            إيداع مبلغ
+          </button>
+          <button
+            onClick={() => { setAdjustType("withdrawal"); setAdjustDialogOpen(true); }}
+            className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-red-600/20"
+            data-testid="button-fund-withdrawal"
+          >
+            <ArrowUpCircle className="w-5 h-5" />
+            سحب مبلغ
+          </button>
+        </div>
+
+        <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+          <DialogContent className="sm:max-w-md font-sans" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="font-heading text-xl">
+                {adjustType === "deposit" ? "إيداع مبلغ للصندوق" : "سحب مبلغ من الصندوق"}
+              </DialogTitle>
+              <DialogDescription>
+                {adjustType === "deposit" ? "أدخل المبلغ المراد إضافته للصندوق" : "أدخل المبلغ المراد سحبه من الصندوق"}
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              className="py-4 space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (adjustAmount && Number(adjustAmount) > 0) {
+                  createAdjustmentMutation.mutate({
+                    type: adjustType,
+                    amount: adjustAmount,
+                    description: adjustDescription || undefined,
+                  });
+                }
+              }}
+            >
+              <div className="space-y-2">
+                <label className="text-sm font-medium">المبلغ (ر.ع) *</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="0.000"
+                  required
+                  data-testid="input-adjust-amount"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">الوصف (اختياري)</label>
+                <input
+                  type="text"
+                  value={adjustDescription}
+                  onChange={(e) => setAdjustDescription(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="سبب العملية..."
+                  data-testid="input-adjust-description"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={createAdjustmentMutation.isPending || !adjustAmount || Number(adjustAmount) <= 0}
+                className={cn(
+                  "w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-white",
+                  adjustType === "deposit" ? "bg-green-600" : "bg-red-600"
+                )}
+                data-testid="button-submit-adjustment"
+              >
+                {createAdjustmentMutation.isPending ? (
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    {adjustType === "deposit" ? <ArrowDownCircle className="w-5 h-5" /> : <ArrowUpCircle className="w-5 h-5" />}
+                    {adjustType === "deposit" ? "تأكيد الإيداع" : "تأكيد السحب"}
+                  </>
+                )}
+              </button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {adjustments.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="font-bold text-lg text-amber-700 font-heading px-1">سجل العمليات المباشرة</h3>
+            {adjustments.map((adj, idx) => (
+              <motion.div
+                key={adj.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.03 }}
+                className="bg-card border border-border/60 rounded-2xl p-4 flex items-center gap-3"
+              >
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  adj.type === "deposit" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                )}>
+                  {adj.type === "deposit" ? <ArrowDownCircle className="w-5 h-5" /> : <ArrowUpCircle className="w-5 h-5" />}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-xs font-bold px-2 py-0.5 rounded-full",
+                      adj.type === "deposit" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    )}>
+                      {adj.type === "deposit" ? "إيداع" : "سحب"}
+                    </span>
+                    <span className="font-bold text-sm">{Number(adj.amount).toFixed(3)} ر.ع</span>
+                  </div>
+                  {adj.description && (
+                    <p className="text-xs text-muted-foreground mt-1">{adj.description}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {adj.createdAt ? new Date(adj.createdAt).toLocaleDateString("ar-OM", { year: "numeric", month: "short", day: "numeric" }) : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm("هل أنت متأكد من حذف هذه العملية؟")) {
+                      deleteAdjustmentMutation.mutate(adj.id);
+                    }
+                  }}
+                  disabled={deleteAdjustmentMutation.isPending}
+                  className="p-2 bg-red-100 text-red-600 rounded-xl active:scale-95 transition-transform disabled:opacity-50"
+                  data-testid={`button-delete-adjustment-${adj.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="border-t border-border/40 my-2" />
 
         {/* Users List */}
         <div className="space-y-4">

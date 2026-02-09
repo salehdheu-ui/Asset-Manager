@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { contributions, loans, expenses, familySettings, capitalAllocations, loanRepayments } from "@shared/schema";
+import { contributions, loans, expenses, familySettings, capitalAllocations, loanRepayments, fundAdjustments } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface AllocationResult {
@@ -38,10 +38,19 @@ async function computeNetAssetsForYear(year: number): Promise<number> {
   
   const allExpenses = await db.select().from(expenses);
 
+  const allAdjustments = await db.select().from(fundAdjustments);
+
   const totalContribs = allContribs.reduce((sum, c) => sum + Number(c.amount), 0);
 
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+
+  const yearAdjustments = allAdjustments.filter(a => {
+    const d = a.createdAt;
+    return d && d >= yearStart && d <= yearEnd;
+  });
+  const totalDeposits = yearAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
+  const totalWithdrawals = yearAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
 
   const yearLoans = allLoans.filter(l => {
     const d = l.approvedAt || l.createdAt;
@@ -66,7 +75,7 @@ async function computeNetAssetsForYear(year: number): Promise<number> {
     }).reduce((sum, r) => sum + Number(r.amount), 0);
   }
 
-  return Math.max(0, totalContribs - totalLoans + totalRepayments - totalExpenses);
+  return Math.max(0, totalContribs + totalDeposits - totalWithdrawals - totalLoans + totalRepayments - totalExpenses);
 }
 
 async function computeUsedAmounts(year: number) {
