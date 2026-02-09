@@ -68,7 +68,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteMember(id: string): Promise<void> {
-    await db.delete(members).where(eq(members.id, id));
+    await db.transaction(async (tx) => {
+      const memberLoans = await tx.select({ id: loans.id }).from(loans).where(eq(loans.memberId, id));
+      for (const loan of memberLoans) {
+        await tx.delete(loanRepayments).where(eq(loanRepayments.loanId, loan.id));
+      }
+      await tx.delete(loans).where(eq(loans.memberId, id));
+      await tx.delete(contributions).where(eq(contributions.memberId, id));
+      await tx.delete(members).where(eq(members.id, id));
+    });
   }
 
   // Contributions
