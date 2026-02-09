@@ -69,6 +69,7 @@ export function useAuth() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear();
     },
   });
 
@@ -79,7 +80,7 @@ export function useAuth() {
     login: loginMutation.mutateAsync,
     isLoggingIn: loginMutation.isPending,
     loginError: loginMutation.error?.message,
-    logout: logoutMutation.mutate,
+    logout: logoutMutation.mutateAsync,
     isLoggingOut: logoutMutation.isPending,
   };
 }

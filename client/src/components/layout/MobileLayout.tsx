@@ -171,8 +171,10 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 </div>
                 
                 <button 
-                  onClick={() => {
-                    logout();
+                  onClick={async () => {
+                    try {
+                      await logout();
+                    } catch (e) {}
                     setIsMenuOpen(false);
                     setLocation("/");
                   }}
