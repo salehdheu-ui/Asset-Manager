@@ -7,7 +7,6 @@ import AuthGuard from "@/components/AuthGuard";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Auth from "@/pages/auth";
-import Ledger from "@/pages/ledger";
 import Loans from "@/pages/loans";
 import Governance from "@/pages/governance";
 import Expenses from "@/pages/expenses";
@@ -31,7 +30,6 @@ function Router() {
     <Switch>
       <Route path="/" component={Auth} />
       <Route path="/dashboard">{() => <ProtectedRoute component={Dashboard} />}</Route>
-      <Route path="/ledger">{() => <ProtectedRoute component={Ledger} />}</Route>
       <Route path="/loans">{() => <ProtectedRoute component={Loans} />}</Route>
       <Route path="/governance">{() => <ProtectedRoute component={Governance} />}</Route>
       <Route path="/expenses">{() => <ProtectedRoute component={Expenses} />}</Route>

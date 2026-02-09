@@ -12,7 +12,6 @@ import {
   X,
   ChevronLeft,
   ShieldCheck,
-  History,
   LogOut,
   FileText,
   Info,
@@ -48,7 +47,6 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
     { href: "/profile", icon: User, label: "حسابي", desc: "إعدادات الحساب الشخصي" },
     ...(isAdmin ? [{ href: "/admin", icon: Shield, label: "الإدارة", desc: "إدارة المستخدمين والصلاحيات" }] : []),
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة", desc: "قوانين الصندوق والقرارات" },
-    { href: "/ledger", icon: History, label: "السجل", desc: "سجل الثقة والعمليات" },
     ...(isAdmin ? [{ href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" }] : []),
   ];
 
