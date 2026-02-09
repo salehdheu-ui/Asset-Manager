@@ -16,6 +16,20 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    try {
+      const match = error.message.match(/^\d+:\s*([\s\S]+)$/);
+      if (match) {
+        const parsed = JSON.parse(match[1]);
+        if (parsed.error) return parsed.error;
+      }
+    } catch {}
+    return error.message;
+  }
+  return "حدث خطأ غير متوقع";
+}
+
 export default function Loans() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -24,6 +38,7 @@ export default function Loans() {
   const userMemberId = (user as any)?.memberId;
   const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
   const [repayments, setRepayments] = useState<Record<string, any[]>>({});
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
   
   const { data: allLoans = [], isLoading: loansLoading } = useQuery({
     queryKey: ["loans"],
@@ -49,9 +64,17 @@ export default function Loans() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      setOpenDialog(null);
       toast({ 
         title: "تم تقديم طلب السلفة",
         description: "بانتظار مراجعة واعتماد الوصي."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "تعذّر تقديم الطلب",
+        description: extractErrorMessage(error),
+        variant: "destructive",
       });
     },
   });
@@ -63,6 +86,13 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast({ title: status === "approved" ? "تم اعتماد السلفة بنجاح" : "تم رفض الطلب" });
     },
+    onError: (error) => {
+      toast({
+        title: "حدث خطأ",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -71,6 +101,13 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast({ title: "تم حذف السجل" });
+    },
+    onError: (error) => {
+      toast({
+        title: "حدث خطأ",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
     },
   });
 
@@ -86,7 +123,8 @@ export default function Loans() {
     return members.find(m => m.id === memberId)?.name || "غير معروف";
   };
 
-  const availableCapital = summary?.layers?.find(l => l.id === "flexible")?.amount || 0;
+  const flexibleLayer = summary?.layers?.find(l => l.id === "flexible");
+  const availableCapital = (flexibleLayer as any)?.available ?? flexibleLayer?.amount ?? 0;
 
   const loanTypes = [
     {
@@ -131,11 +169,10 @@ export default function Loans() {
   return (
     <MobileLayout title="نظام السلف">
       <div className="space-y-6 pt-2 pb-12">
-        {/* Header Summary */}
         <div className="bg-primary text-primary-foreground p-6 rounded-[2rem] relative overflow-hidden shadow-lg shadow-primary/20">
           <div className="relative z-10">
             <h2 className="text-sm font-medium opacity-80 mb-1">المتاح للإقراض الآن</h2>
-            <div className="text-4xl font-mono font-bold tracking-tighter">
+            <div className="text-4xl font-mono font-bold tracking-tighter" data-testid="text-available-capital">
               {availableCapital.toLocaleString()} <span className="text-lg font-sans font-normal opacity-80 text-white/90">ر.ع</span>
             </div>
             <p className="text-[10px] opacity-70 mt-3 flex items-center gap-1.5">
@@ -153,15 +190,15 @@ export default function Loans() {
           </div>
         ) : (
           <>
-            {/* Action Buttons (New Requests) */}
             <div className="space-y-4">
               <h3 className="font-bold text-lg text-primary px-1 font-heading">تقديم طلب جديد</h3>
               <div className="grid gap-3">
                 {loanTypes.map((loan) => (
-                  <Dialog key={loan.id}>
+                  <Dialog key={loan.id} open={openDialog === loan.id} onOpenChange={(open) => setOpenDialog(open ? loan.id : null)}>
                     <DialogTrigger asChild>
                       <motion.div 
                         whileTap={{ scale: 0.98 }}
+                        data-testid={`button-loan-${loan.id}`}
                         className={cn(
                           "p-5 rounded-2xl border flex items-start gap-4 cursor-pointer transition-all hover:shadow-md", 
                           loan.color
@@ -200,7 +237,9 @@ export default function Loans() {
                           <label className="text-sm font-bold block text-muted-foreground mr-1">اختر العضو</label>
                           <select 
                             id={`loan-member-${loan.id}`}
+                            data-testid={`select-member-${loan.id}`}
                             className="w-full p-4 border-2 border-primary/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                            defaultValue={members[0]?.id}
                           >
                             {members.map(m => (
                               <option key={m.id} value={m.id}>{m.name}</option>
@@ -213,20 +252,26 @@ export default function Loans() {
                             <input 
                               type="number" 
                               id={`loan-amount-${loan.id}`}
+                              data-testid={`input-amount-${loan.id}`}
                               className="w-full text-4xl font-mono p-6 border-2 border-primary/10 rounded-3xl text-center focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" 
                               placeholder="000"
                             />
                             <div className="absolute left-6 top-1/2 -translate-y-1/2 text-primary font-bold text-lg">ر.ع</div>
                           </div>
+                          <p className="text-[10px] text-muted-foreground mr-1">
+                            الحد المتاح: <span className="font-mono font-bold text-primary">{availableCapital.toLocaleString()}</span> ر.ع
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-bold block text-muted-foreground mr-1">مدة السداد (بالأشهر)</label>
                           <select 
                             id={`loan-months-${loan.id}`}
+                            data-testid={`select-months-${loan.id}`}
                             className="w-full p-4 border-2 border-primary/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                            defaultValue="12"
                           >
                             <option value="6">6 أشهر</option>
-                            <option value="12" selected>12 شهر</option>
+                            <option value="12">12 شهر</option>
                             <option value="18">18 شهر</option>
                             <option value="24">24 شهر</option>
                           </select>
@@ -237,11 +282,16 @@ export default function Loans() {
                         </div>
                       </div>
                       <button 
+                        data-testid={`button-submit-loan-${loan.id}`}
                         onClick={() => {
                           const memberId = (document.getElementById(`loan-member-${loan.id}`) as HTMLSelectElement).value;
                           const amount = (document.getElementById(`loan-amount-${loan.id}`) as HTMLInputElement).value;
                           const months = (document.getElementById(`loan-months-${loan.id}`) as HTMLSelectElement).value;
-                          if (amount && memberId) {
+                          if (!amount || Number(amount) <= 0) {
+                            toast({ title: "يرجى إدخال مبلغ صحيح", variant: "destructive" });
+                            return;
+                          }
+                          if (memberId) {
                             createMutation.mutate({
                               memberId,
                               type: loan.id,
@@ -254,7 +304,7 @@ export default function Loans() {
                         disabled={createMutation.isPending}
                         className="w-full bg-primary text-primary-foreground py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 text-lg active:scale-95 disabled:opacity-50"
                       >
-                        تأكيد وإرسال الطلب
+                        {createMutation.isPending ? "جاري الإرسال..." : "تأكيد وإرسال الطلب"}
                       </button>
                     </DialogContent>
                   </Dialog>
@@ -262,7 +312,6 @@ export default function Loans() {
               </div>
             </div>
 
-            {/* Requests List */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
                 <h3 className="font-bold text-lg text-primary font-heading">تاريخ الطلبات</h3>
@@ -280,6 +329,7 @@ export default function Loans() {
                       key={loan.id}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
+                      data-testid={`card-loan-${loan.id}`}
                       className="bg-card border border-border/60 rounded-2xl p-4 shadow-sm space-y-3"
                     >
                       <div className="flex justify-between items-start">
@@ -315,6 +365,7 @@ export default function Loans() {
                       {isGuardian && loan.status === 'pending' && (
                         <div className="flex gap-2 pt-1 border-t border-border/40">
                           <button 
+                            data-testid={`button-approve-${loan.id}`}
                             onClick={() => statusMutation.mutate({ id: loan.id, status: "approved" })}
                             disabled={statusMutation.isPending}
                             className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
@@ -323,6 +374,7 @@ export default function Loans() {
                             اعتماد
                           </button>
                           <button 
+                            data-testid={`button-reject-${loan.id}`}
                             onClick={() => statusMutation.mutate({ id: loan.id, status: "rejected" })}
                             disabled={statusMutation.isPending}
                             className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
@@ -335,6 +387,7 @@ export default function Loans() {
 
                       {loan.status === 'approved' && (
                         <button 
+                          data-testid={`button-repayments-${loan.id}`}
                           onClick={() => loadRepayments(loan.id)}
                           className="w-full text-[10px] font-bold text-primary flex items-center justify-center gap-1 pt-2 border-t border-border/40"
                         >
@@ -343,7 +396,6 @@ export default function Loans() {
                         </button>
                       )}
 
-                      {/* Repayment Plan */}
                       <AnimatePresence>
                         {expandedLoan === loan.id && repayments[loan.id] && (
                           <motion.div 
@@ -384,6 +436,7 @@ export default function Loans() {
 
                       {loan.status !== 'pending' && (
                         <button 
+                          data-testid={`button-delete-${loan.id}`}
                           onClick={() => deleteMutation.mutate(loan.id)}
                           disabled={deleteMutation.isPending}
                           className="w-full text-[10px] text-muted-foreground flex items-center justify-center gap-1 pt-2 border-t border-border/40 hover:text-red-500 transition-colors disabled:opacity-50"
