@@ -21,18 +21,23 @@ export default function Loans() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isGuardian = user?.role === 'admin';
+  const userMemberId = (user as any)?.memberId;
   const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
   const [repayments, setRepayments] = useState<Record<string, any[]>>({});
   
-  const { data: loans = [], isLoading: loansLoading } = useQuery({
+  const { data: allLoans = [], isLoading: loansLoading } = useQuery({
     queryKey: ["loans"],
     queryFn: getLoans,
   });
 
-  const { data: members = [] } = useQuery({
+  const loans = isGuardian ? allLoans : allLoans.filter(l => l.memberId === userMemberId);
+
+  const { data: allMembers = [] } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
   });
+
+  const members = isGuardian ? allMembers : allMembers.filter(m => m.id === userMemberId);
 
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary"],

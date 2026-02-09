@@ -31,11 +31,14 @@ export default function YearlyPaymentMatrix() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const { user } = useAuth();
   const isGuardian = user?.role === 'admin';
+  const userMemberId = (user as any)?.memberId;
 
-  const { data: members = [], isLoading: membersLoading } = useQuery({
+  const { data: allMembers = [], isLoading: membersLoading } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
   });
+
+  const members = isGuardian ? allMembers : allMembers.filter(m => m.id === userMemberId);
 
   const { data: contributions = [], isLoading: contribLoading } = useQuery({
     queryKey: ["contributions", selectedYear],

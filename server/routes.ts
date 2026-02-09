@@ -56,9 +56,12 @@ export async function registerRoutes(
   });
 
   // ============= Members =============
-  app.get("/api/members", async (req, res) => {
+  app.get("/api/members", isAuthenticated, async (req: any, res) => {
     try {
       const members = await storage.getMembers();
+      if (req.user?.role !== 'admin' && req.user?.memberId) {
+        return res.json(members.filter(m => m.id === req.user.memberId));
+      }
       res.json(members);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch members" });
@@ -103,7 +106,7 @@ export async function registerRoutes(
   });
 
   // ============= Contributions =============
-  app.get("/api/contributions", async (req, res) => {
+  app.get("/api/contributions", isAuthenticated, async (req: any, res) => {
     try {
       const year = req.query.year ? Number(req.query.year) : undefined;
       const memberId = req.query.memberId as string | undefined;
@@ -116,6 +119,11 @@ export async function registerRoutes(
       } else {
         contributions = await storage.getContributions();
       }
+
+      if (req.user?.role !== 'admin' && req.user?.memberId) {
+        contributions = contributions.filter((c: any) => c.memberId === req.user.memberId);
+      }
+
       res.json(contributions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contributions" });
@@ -150,12 +158,17 @@ export async function registerRoutes(
   });
 
   // ============= Loans =============
-  app.get("/api/loans", async (req, res) => {
+  app.get("/api/loans", isAuthenticated, async (req: any, res) => {
     try {
       const memberId = req.query.memberId as string | undefined;
-      const loans = memberId 
+      let loans = memberId 
         ? await storage.getLoansByMember(memberId)
         : await storage.getLoans();
+
+      if (req.user?.role !== 'admin' && req.user?.memberId) {
+        loans = loans.filter((l: any) => l.memberId === req.user.memberId);
+      }
+
       res.json(loans);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch loans" });
