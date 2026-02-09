@@ -8,10 +8,11 @@ import {
   ChevronRight, 
   CheckCircle2, 
   Clock, 
-  History,
   UserCheck,
   AlertCircle,
-  Calendar
+  Calendar,
+  TrendingUp,
+  Coins
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export default function YearlyPaymentMatrix() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const { user } = useAuth();
   const isGuardian = user?.role === 'admin';
@@ -68,10 +70,10 @@ export default function YearlyPaymentMatrix() {
   });
 
   const months = [
-    { id: 1, name: "يناير" }, { id: 2, name: "فبراير" }, { id: 3, name: "مارس" },
-    { id: 4, name: "أبريل" }, { id: 5, name: "مايو" }, { id: 6, name: "يونيو" },
-    { id: 7, name: "يوليو" }, { id: 8, name: "أغسطس" }, { id: 9, name: "سبتمبر" },
-    { id: 10, name: "أكتوبر" }, { id: 11, name: "نوفمبر" }, { id: 12, name: "ديسمبر" }
+    { id: 1, name: "يناير", short: "01" }, { id: 2, name: "فبراير", short: "02" }, { id: 3, name: "مارس", short: "03" },
+    { id: 4, name: "أبريل", short: "04" }, { id: 5, name: "مايو", short: "05" }, { id: 6, name: "يونيو", short: "06" },
+    { id: 7, name: "يوليو", short: "07" }, { id: 8, name: "أغسطس", short: "08" }, { id: 9, name: "سبتمبر", short: "09" },
+    { id: 10, name: "أكتوبر", short: "10" }, { id: 11, name: "نوفمبر", short: "11" }, { id: 12, name: "ديسمبر", short: "12" }
   ];
 
   const getContribution = (memberId: string, month: number) => {
@@ -79,6 +81,9 @@ export default function YearlyPaymentMatrix() {
   };
 
   const years = Array.from({ length: 2099 - 2020 + 1 }, (_, i) => 2020 + i);
+
+  const totalAllApproved = contributions.filter(c => c.status === 'approved').reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalPending = contributions.filter(c => c.status === 'pending_approval').length;
 
   if (membersLoading || contribLoading) {
     return (
@@ -92,7 +97,7 @@ export default function YearlyPaymentMatrix() {
 
   return (
     <MobileLayout title="سجل المساهمات والاعتمادات">
-      <div className="space-y-6 pt-2 pb-12">
+      <div className="space-y-5 pt-2 pb-16">
         
         {/* Year Selector */}
         <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/15 rounded-3xl p-5 shadow-sm">
@@ -136,78 +141,149 @@ export default function YearlyPaymentMatrix() {
           </div>
         </div>
 
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[10px] text-emerald-600/70 font-bold">إجمالي المعتمد</p>
+              <p className="text-lg font-mono font-bold text-emerald-700" data-testid="text-total-approved">{totalAllApproved.toLocaleString()} <span className="text-[10px] font-sans">ر.ع</span></p>
+            </div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.05 }}
+            className="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-4 flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[10px] text-amber-600/70 font-bold">طلبات معلقة</p>
+              <p className="text-lg font-mono font-bold text-amber-700" data-testid="text-total-pending">{totalPending}</p>
+            </div>
+          </motion.div>
+        </div>
+
         {members.length === 0 ? (
-          <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-border">
-            <p className="text-sm text-muted-foreground font-medium">لا يوجد أعضاء</p>
-            <p className="text-xs text-muted-foreground mt-1">يرجى إضافة أعضاء من صفحة الأعضاء أولاً</p>
+          <div className="text-center py-16 bg-muted/10 rounded-3xl border border-dashed border-border/60">
+            <Coins className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground font-bold">لا يوجد أعضاء</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">يرجى إضافة أعضاء من صفحة الأعضاء أولاً</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {members.map((member, mIdx) => {
               const memberContributions = contributions.filter(c => c.memberId === member.id && c.status === 'approved');
+              const memberPending = contributions.filter(c => c.memberId === member.id && c.status === 'pending_approval');
               const totalApproved = memberContributions.reduce((sum, c) => sum + Number(c.amount), 0);
+              const paidMonths = memberContributions.length;
 
               return (
                 <motion.div 
                   key={member.id}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: mIdx * 0.05 }}
-                  className="bg-card border border-border/60 rounded-[1.5rem] overflow-hidden shadow-sm"
+                  transition={{ delay: mIdx * 0.06 }}
+                  className="bg-card border border-border/50 rounded-3xl overflow-hidden shadow-sm"
+                  data-testid={`card-member-${member.id}`}
                 >
                   {/* Member Header */}
-                  <div className="p-4 bg-primary/5 border-b border-border flex items-center justify-between">
+                  <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border border-primary/20">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary text-lg border border-primary/15">
                         {member.avatar || member.name.substring(0, 2)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm">{member.name}</h4>
-                        <p className="text-[10px] text-muted-foreground font-bold">المعتمد: {totalApproved.toLocaleString()} ر.ع</p>
+                        <h4 className="font-bold text-sm" data-testid={`text-member-name-${member.id}`}>{member.name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                            {totalApproved.toLocaleString()} ر.ع
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {paidMonths}/12 شهر
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                       {contributions.some(c => c.memberId === member.id && c.status === 'pending_approval') && (
-                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 border border-amber-200">
-                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                            <span className="text-[8px] font-bold text-amber-700">تنبيه</span>
-                         </div>
-                       )}
-                       <History className="w-4 h-4 text-primary/40" />
+                    {memberPending.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/60">
+                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                        <span className="text-[9px] font-bold text-amber-600">{memberPending.length} معلق</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="px-4 pb-3">
+                    <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(paidMonths / 12) * 100}%` }}
+                        transition={{ duration: 0.8, delay: mIdx * 0.1 }}
+                        className="h-full bg-gradient-to-l from-emerald-400 to-emerald-500 rounded-full"
+                      />
                     </div>
                   </div>
 
                   {/* Months Grid */}
-                  <div className="grid grid-cols-3 gap-px bg-border/40 p-1">
+                  <div className="grid grid-cols-4 gap-2 p-3 pt-1">
                     {months.map((month) => {
                       const contribution = getContribution(member.id, month.id);
                       const isPending = contribution?.status === 'pending_approval';
                       const isApproved = contribution?.status === 'approved';
                       const amount = contribution ? Number(contribution.amount) : 0;
+                      const isCurrentMonth = selectedYear === currentYear && month.id === currentMonth;
 
                       return (
                         <Dialog key={month.id}>
                           <DialogTrigger asChild>
-                            <button className={cn(
-                              "flex flex-col items-center justify-center p-4 gap-1 transition-all relative group rounded-xl",
-                              isApproved ? "bg-emerald-500/10 border-emerald-500/20" : isPending ? "bg-amber-500/10 border-amber-500/20" : "bg-card hover:bg-muted/50"
-                            )}>
-                              <span className="text-[10px] font-bold text-muted-foreground">{month.name}</span>
-                              <span className={cn(
-                                "text-sm font-mono font-bold",
-                                isApproved ? "text-emerald-700" : isPending ? "text-amber-700" : "text-muted-foreground"
-                              )}>
-                                {amount > 0 ? amount.toLocaleString() : "---"}
-                              </span>
-                              {isApproved && (
-                                <div className="absolute top-2 right-2">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                </div>
+                            <button 
+                              className={cn(
+                                "relative flex flex-col items-center justify-center py-3 px-1 gap-0.5 transition-all rounded-2xl border",
+                                isApproved 
+                                  ? "bg-emerald-500/8 border-emerald-500/20 hover:bg-emerald-500/15" 
+                                  : isPending 
+                                    ? "bg-amber-500/8 border-amber-400/25 hover:bg-amber-500/15" 
+                                    : isCurrentMonth
+                                      ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                                      : "bg-muted/20 border-transparent hover:bg-muted/40 hover:border-border/30"
                               )}
-                              {isPending && (
-                                <div className="absolute top-2 right-2">
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                </div>
+                              data-testid={`button-month-${member.id}-${month.id}`}
+                            >
+                              <span className={cn(
+                                "text-[10px] font-bold",
+                                isApproved ? "text-emerald-600" : isPending ? "text-amber-600" : isCurrentMonth ? "text-primary" : "text-muted-foreground/70"
+                              )}>
+                                {month.name}
+                              </span>
+                              
+                              {isApproved ? (
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5" />
+                              ) : isPending ? (
+                                <Clock className="w-5 h-5 text-amber-500 mt-0.5 animate-pulse" />
+                              ) : (
+                                <span className="text-[11px] font-mono text-muted-foreground/40 mt-0.5">---</span>
+                              )}
+
+                              {amount > 0 && (
+                                <span className={cn(
+                                  "text-[9px] font-mono font-bold mt-0.5",
+                                  isApproved ? "text-emerald-700" : "text-amber-700"
+                                )}>
+                                  {amount.toLocaleString()}
+                                </span>
+                              )}
+
+                              {isCurrentMonth && !isApproved && !isPending && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full border-2 border-card" />
                               )}
                             </button>
                           </DialogTrigger>
@@ -241,6 +317,7 @@ export default function YearlyPaymentMatrix() {
                                       onClick={() => approveMutation.mutate(contribution.id)}
                                       disabled={approveMutation.isPending}
                                       className="w-full bg-primary text-primary-foreground py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-lg active:scale-95 disabled:opacity-50"
+                                      data-testid="button-approve-contribution"
                                     >
                                       <UserCheck className="w-6 h-6" />
                                       اعتماد استلام المبلغ
@@ -258,6 +335,7 @@ export default function YearlyPaymentMatrix() {
                                         id={`amount-${member.id}-${month.id}`}
                                         className="w-full text-4xl font-mono p-6 border-2 border-primary/10 rounded-3xl text-center focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" 
                                         placeholder="0"
+                                        data-testid="input-amount"
                                       />
                                       <div className="absolute left-6 top-1/2 -translate-y-1/2 text-primary font-bold text-lg">ر.ع</div>
                                     </div>
@@ -281,6 +359,7 @@ export default function YearlyPaymentMatrix() {
                                     }}
                                     disabled={createMutation.isPending}
                                     className="w-full bg-primary text-primary-foreground py-5 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 text-lg active:scale-95 disabled:opacity-50"
+                                    data-testid="button-submit-payment"
                                   >
                                     تقديم طلب دفع
                                   </button>
