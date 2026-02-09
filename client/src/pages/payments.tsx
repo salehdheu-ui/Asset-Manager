@@ -10,7 +10,8 @@ import {
   Clock, 
   History,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export default function YearlyPaymentMatrix() {
     return contributions.find(c => c.memberId === memberId && c.month === month);
   };
 
-  const years = Array.from({ length: currentYear - 2020 + 5 }, (_, i) => 2020 + i);
+  const years = Array.from({ length: 2099 - 2020 + 1 }, (_, i) => 2020 + i);
 
   if (membersLoading || contribLoading) {
     return (
@@ -94,31 +95,45 @@ export default function YearlyPaymentMatrix() {
       <div className="space-y-6 pt-2 pb-12">
         
         {/* Year Selector */}
-        <div className="flex items-center justify-between bg-card border border-border rounded-2xl p-4 shadow-sm">
-          <button 
-            onClick={() => setSelectedYear(prev => prev - 1)}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-          
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">عرض سنة</span>
-            <select 
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-transparent font-bold text-2xl font-mono focus:outline-none appearance-none text-center cursor-pointer text-primary"
+        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/15 rounded-3xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <button 
+              onClick={() => setSelectedYear(prev => Math.max(2020, prev - 1))}
+              className="w-11 h-11 flex items-center justify-center bg-card hover:bg-primary/10 rounded-2xl transition-all border border-border/50 active:scale-90 shadow-sm"
+              data-testid="button-prev-year"
             >
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
+              <ChevronRight className="w-5 h-5 text-primary" />
+            </button>
+            
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary/60" />
+                <span className="text-[10px] text-primary/70 uppercase font-bold tracking-[0.2em]">السنة المالية</span>
+              </div>
+              <div className="relative">
+                <select 
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-transparent font-bold text-4xl font-mono focus:outline-none appearance-none text-center cursor-pointer text-primary pr-2 pl-2"
+                  data-testid="select-year"
+                >
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <div className="h-0.5 w-full bg-gradient-to-l from-transparent via-primary/30 to-transparent mt-1 rounded-full" />
+              </div>
+              {selectedYear === currentYear && (
+                <span className="text-[9px] bg-primary/15 text-primary px-3 py-0.5 rounded-full font-bold">السنة الحالية</span>
+              )}
+            </div>
 
-          <button 
-            onClick={() => setSelectedYear(prev => prev + 1)}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
+            <button 
+              onClick={() => setSelectedYear(prev => Math.min(2099, prev + 1))}
+              className="w-11 h-11 flex items-center justify-center bg-card hover:bg-primary/10 rounded-2xl transition-all border border-border/50 active:scale-90 shadow-sm"
+              data-testid="button-next-year"
+            >
+              <ChevronLeft className="w-5 h-5 text-primary" />
+            </button>
+          </div>
         </div>
 
         {members.length === 0 ? (
