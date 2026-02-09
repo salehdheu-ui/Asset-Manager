@@ -73,16 +73,14 @@ export default function Dashboard() {
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-4 gap-4">
           {quickActions.map((action) => (
-            <Link key={action.label} href={action.href}>
-              <a className="flex flex-col items-center gap-2 group">
-                <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-active:scale-95",
-                  action.color
-                )}>
-                  <action.icon className="w-7 h-7" />
-                </div>
-                <span className="text-xs font-bold text-muted-foreground">{action.label}</span>
-              </a>
+            <Link key={action.label} href={action.href} className="flex flex-col items-center gap-2 group" data-testid={`link-${action.href.slice(1)}`}>
+              <div className={cn(
+                "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-active:scale-95",
+                action.color
+              )}>
+                <action.icon className="w-7 h-7" />
+              </div>
+              <span className="text-xs font-bold text-muted-foreground">{action.label}</span>
             </Link>
           ))}
         </div>
@@ -113,7 +111,7 @@ export default function Dashboard() {
         <div className="space-y-4 pb-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="font-bold text-lg text-primary font-heading">توزيع المحفظة</h3>
-            <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-bold uppercase tracking-wider">50/20/20/10</span>
+            <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-bold uppercase tracking-wider">45/15/20/20</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {layers.map((layer, idx) => (

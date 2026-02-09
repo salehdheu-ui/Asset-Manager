@@ -10,6 +10,8 @@ interface LayerData {
   amount: number;
   color: string;
   locked: boolean;
+  used?: number;
+  available?: number;
 }
 
 interface CapitalLayerCardProps {
@@ -18,11 +20,15 @@ interface CapitalLayerCardProps {
 }
 
 export default function CapitalLayerCard({ layer, delay = 0 }: CapitalLayerCardProps) {
+  const hasUsage = (layer.id === "flexible" || layer.id === "emergency") && layer.amount > 0;
+  const usedPercent = hasUsage && layer.amount > 0 ? Math.min(100, ((layer.used || 0) / layer.amount) * 100) : 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, delay: delay * 0.1 }}
+      data-testid={`card-layer-${layer.id}`}
       className="relative overflow-hidden rounded-2xl bg-card border border-border/50 shadow-sm p-4 flex flex-col justify-between aspect-square hover:shadow-md transition-shadow group"
     >
       <div className={cn("absolute top-0 right-0 w-full h-1 opacity-80", layer.color)} />
@@ -47,16 +53,31 @@ export default function CapitalLayerCard({ layer, delay = 0 }: CapitalLayerCardP
         
         <div className="space-y-1.5">
           <div className="w-full bg-muted/50 h-1.5 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${layer.percentage}%` }}
-              transition={{ duration: 1, delay: 0.5 + (delay * 0.1) }}
-              className={cn("h-full rounded-full opacity-90", layer.color)} 
-            />
+            {hasUsage ? (
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${usedPercent}%` }}
+                transition={{ duration: 1, delay: 0.5 + (delay * 0.1) }}
+                className="h-full rounded-full bg-red-400/70"
+              />
+            ) : (
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${layer.percentage}%` }}
+                transition={{ duration: 1, delay: 0.5 + (delay * 0.1) }}
+                className={cn("h-full rounded-full opacity-90", layer.color)} 
+              />
+            )}
           </div>
           <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
             <span>{layer.percentage}%</span>
-            <span>{layer.locked ? "مقفل" : "نشط"}</span>
+            {hasUsage ? (
+              <span data-testid={`text-available-${layer.id}`} className="text-emerald-600">
+                متاح: {(layer.available || 0).toLocaleString()}
+              </span>
+            ) : (
+              <span>{layer.locked ? "مقفل" : "نشط"}</span>
+            )}
           </div>
         </div>
       </div>
