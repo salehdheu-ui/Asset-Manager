@@ -15,6 +15,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    try {
+      const match = error.message.match(/^\d+:\s*([\s\S]+)$/);
+      if (match) {
+        const parsed = JSON.parse(match[1]);
+        if (parsed.error) return parsed.error;
+      }
+    } catch {}
+    return error.message;
+  }
+  return "حدث خطأ غير معروف";
+}
+
 export default function Expenses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,17 +53,9 @@ export default function Expenses() {
       toast({ title: "تم توثيق العملية بنجاح" });
     },
     onError: (error) => {
-      let errorMessage = "حدث خطأ أثناء تسجيل المصروف";
-      try {
-        const match = (error as any)?.message?.match(/\{.*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          errorMessage = parsed.message || errorMessage;
-        }
-      } catch {}
       toast({
         title: "تعذر تسجيل المصروف",
-        description: errorMessage,
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     },
