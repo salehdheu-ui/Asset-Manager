@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import CapitalLayerCard from "@/components/dashboard/CapitalLayerCard";
 import { getDashboardSummary } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import { AlertTriangle, TrendingUp, ShieldCheck, Wallet, ArrowUpRight, HandCoins, Users, CreditCard, History, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -15,6 +16,8 @@ const layerMeta: Record<string, { arabicName: string; color: string }> = {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { data: summary, isLoading } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: getDashboardSummary,
@@ -22,7 +25,7 @@ export default function Dashboard() {
 
   const quickActions = [
     { label: "المساهمات", icon: CreditCard, href: "/payments", color: "bg-emerald-500" },
-    { label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500" },
+    ...(isAdmin ? [{ label: "الإنفاق", icon: Wallet, href: "/expenses", color: "bg-amber-500" }] : []),
     { label: "السلف", icon: HandCoins, href: "/loans", color: "bg-blue-500" },
     { label: "التقارير", icon: FileText, href: "/reports", color: "bg-purple-500" },
   ];

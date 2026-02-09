@@ -299,7 +299,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/expenses", isAuthenticated, async (req, res) => {
+  app.post("/api/expenses", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertExpenseSchema.parse(req.body);
       const currentYear = new Date().getFullYear();
@@ -326,7 +326,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/expenses/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/expenses/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const expenseId = req.params.id as string;
       await storage.deleteExpense(expenseId);
@@ -491,7 +491,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/allocation/check-expense", isAuthenticated, async (req, res) => {
+  app.post("/api/allocation/check-expense", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { amount, category } = req.body;
       const currentYear = new Date().getFullYear();

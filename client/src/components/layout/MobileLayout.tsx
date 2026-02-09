@@ -41,7 +41,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
   const navItems = [
     { href: "/dashboard", icon: Home, label: "الرئيسية", desc: "نظرة عامة على الصندوق" },
     { href: "/payments", icon: CreditCard, label: "المساهمات", desc: "سجل الدفع السنوي" },
-    { href: "/expenses", icon: Wallet, label: "الإنفاق", desc: "الزكاة والمصروفات" },
+    ...(isAdmin ? [{ href: "/expenses", icon: Wallet, label: "الإنفاق", desc: "الزكاة والمصروفات" }] : []),
     { href: "/loans", icon: HandCoins, label: "السلف", desc: "طلبات القروض العائلية" },
     ...(isAdmin ? [{ href: "/members", icon: Users, label: "الأعضاء", desc: "إدارة أفراد العائلة" }] : []),
     { href: "/reports", icon: FileText, label: "التقارير", desc: "الكشوفات والبيانات المالية" },

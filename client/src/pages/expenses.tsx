@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { getExpenses, createExpense, deleteExpense, getDashboardSummary } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import { Wallet, Heart, Scale, ArrowUpRight, TrendingDown, History, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Redirect } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -30,9 +32,15 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export default function Expenses() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [openDialog, setOpenDialog] = useState<string | null>(null);
+
+  if (!isAdmin) {
+    return <Redirect to="/dashboard" />;
+  }
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses"],
