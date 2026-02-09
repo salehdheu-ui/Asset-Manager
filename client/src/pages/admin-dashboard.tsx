@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -170,6 +171,7 @@ export default function AdminDashboard() {
           <DialogContent className="sm:max-w-md font-sans" dir="rtl">
             <DialogHeader>
               <DialogTitle className="font-heading text-xl">إضافة مستخدم جديد</DialogTitle>
+              <DialogDescription>أدخل بيانات المستخدم الجديد لإنشاء حسابه</DialogDescription>
             </DialogHeader>
             <form 
               className="py-4 space-y-4"
@@ -342,6 +344,7 @@ export default function AdminDashboard() {
                       <DialogContent className="sm:max-w-md font-sans" dir="rtl">
                         <DialogHeader>
                           <DialogTitle className="font-heading text-xl">ربط المستخدم بعضو</DialogTitle>
+                          <DialogDescription>اختر العضو المراد ربطه بهذا الحساب</DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                           <p className="text-sm text-muted-foreground">
@@ -385,6 +388,7 @@ export default function AdminDashboard() {
                       <DialogContent className="sm:max-w-md font-sans" dir="rtl">
                         <DialogHeader>
                           <DialogTitle className="font-heading text-xl">تغيير كلمة المرور</DialogTitle>
+                          <DialogDescription>أدخل كلمة المرور الجديدة للمستخدم</DialogDescription>
                         </DialogHeader>
                         <form 
                           className="py-4 space-y-4"

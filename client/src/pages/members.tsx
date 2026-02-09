@@ -34,6 +34,9 @@ export default function Members() {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       toast({ title: "تمت إضافة عضو جديد" });
     },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as any)?.message || "تعذرت إضافة العضو", variant: "destructive" });
+    },
   });
 
   const removeMemberMutation = useMutation({
@@ -41,6 +44,9 @@ export default function Members() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       toast({ title: "تم حذف العضو" });
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as any)?.message || "تعذر حذف العضو", variant: "destructive" });
     },
   });
 
@@ -51,6 +57,9 @@ export default function Members() {
       toast({ title: "تم تحديث بيانات العضو" });
       setEditingMember(null);
       setEditName("");
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as any)?.message || "تعذر تحديث البيانات", variant: "destructive" });
     },
   });
 

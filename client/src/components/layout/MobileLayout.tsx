@@ -204,11 +204,13 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
             const isActive = location === item.href;
             return (
               <li key={item.href} className="flex-1">
-                <Link href={item.href}>
-                  <a className={cn(
+                <Link
+                  href={item.href}
+                  className={cn(
                     "flex flex-col items-center gap-1 py-1 rounded-xl transition-all duration-300 relative group",
                     isActive ? "text-primary" : "text-muted-foreground hover:text-primary/70"
-                  )}>
+                  )}
+                >
                     {isActive && (
                       <motion.div 
                         layoutId="nav-active"
@@ -217,7 +219,6 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                     )}
                     <item.icon className={cn("w-4.5 h-4.5 transition-transform group-active:scale-90", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
                     <span className="text-[8px] font-bold tracking-tight">{item.label}</span>
-                  </a>
                 </Link>
               </li>
             );

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { getExpenses, createExpense, deleteExpense, getDashboardSummary } from "@/lib/api";
@@ -17,6 +18,7 @@ import {
 export default function Expenses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses"],
@@ -33,7 +35,23 @@ export default function Expenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      setOpenDialog(null);
       toast({ title: "تم توثيق العملية بنجاح" });
+    },
+    onError: (error) => {
+      let errorMessage = "حدث خطأ أثناء تسجيل المصروف";
+      try {
+        const match = (error as any)?.message?.match(/\{.*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          errorMessage = parsed.message || errorMessage;
+        }
+      } catch {}
+      toast({
+        title: "تعذر تسجيل المصروف",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 
@@ -44,9 +62,19 @@ export default function Expenses() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast({ title: "تم حذف السجل" });
     },
+    onError: (error) => {
+      toast({
+        title: "حدث خطأ",
+        description: (error as any)?.message || "تعذر حذف السجل",
+        variant: "destructive",
+      });
+    },
   });
 
-  const flexibleCapital = summary?.layers?.find(l => l.id === "flexible")?.amount || 0;
+  const flexibleLayer = summary?.layers?.find((l: any) => l.id === "flexible");
+  const emergencyLayer = summary?.layers?.find((l: any) => l.id === "emergency");
+  const availableFlexible = (flexibleLayer as any)?.available ?? flexibleLayer?.amount ?? 0;
+  const availableEmergency = (emergencyLayer as any)?.available ?? emergencyLayer?.amount ?? 0;
 
   const sections = [
     {
@@ -57,7 +85,8 @@ export default function Expenses() {
       icon: Scale,
       color: 'bg-primary text-primary-foreground',
       details: 'الزكاة حق معلوم للسائل والمحروم. يتم حسابها يدوياً وتوثيقها في السجل.',
-      category: 'zakat'
+      category: 'zakat',
+      available: availableFlexible,
     },
     {
       id: 'charity',
@@ -67,7 +96,8 @@ export default function Expenses() {
       icon: Heart,
       color: 'bg-emerald-600 text-white',
       details: 'بحد أقصى 3% من إجمالي الصندوق سنوياً للحفاظ على الاستدامة.',
-      category: 'charity'
+      category: 'charity',
+      available: availableFlexible,
     },
     {
       id: 'spending',
@@ -77,7 +107,8 @@ export default function Expenses() {
       icon: Wallet,
       color: 'bg-amber-600 text-white',
       details: 'مرتبطة بأهداف العائلة السنوية المعتمدة.',
-      category: 'general'
+      category: 'general',
+      available: availableFlexible,
     }
   ];
 
@@ -107,8 +138,11 @@ export default function Expenses() {
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 bg-card border border-border rounded-2xl p-4 flex justify-between items-center shadow-sm">
             <div>
-              <p className="text-xs text-muted-foreground">الرصيد القابل للإنفاق</p>
-              <h3 className="text-2xl font-bold font-mono text-primary">{flexibleCapital.toLocaleString()} ر.ع</h3>
+              <p className="text-xs text-muted-foreground">الرصيد القابل للإنفاق (مرن)</p>
+              <h3 className="text-2xl font-bold font-mono text-primary" data-testid="text-available-flexible">{availableFlexible.toLocaleString()} ر.ع</h3>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                رصيد الطوارئ: <span className="font-mono font-bold">{availableEmergency.toLocaleString()}</span> ر.ع
+              </p>
             </div>
             <TrendingDown className="text-primary/20 w-12 h-12" />
           </div>
@@ -117,13 +151,14 @@ export default function Expenses() {
         <div className="space-y-4">
           <h3 className="font-bold text-lg text-primary px-1 font-heading">تسجيل إنفاق جديد</h3>
           {sections.map((section, idx) => (
-            <Dialog key={section.id}>
+            <Dialog key={section.id} open={openDialog === section.id} onOpenChange={(open) => setOpenDialog(open ? section.id : null)}>
               <DialogTrigger asChild>
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   className="bg-card border border-border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                  data-testid={`card-expense-${section.id}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className={cn("p-3 rounded-xl", section.color)}>
@@ -146,6 +181,10 @@ export default function Expenses() {
                   <DialogDescription>{section.details}</DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
+                  <div className="bg-muted/30 p-3 rounded-xl text-center">
+                    <p className="text-[10px] text-muted-foreground mb-1">الحد المتاح</p>
+                    <p className="text-lg font-mono font-bold text-primary">{section.available.toLocaleString()} ر.ع</p>
+                  </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">المبلغ (ر.ع)</label>
                     <input 
@@ -153,6 +192,7 @@ export default function Expenses() {
                       id={`expense-amount-${section.id}`}
                       className="w-full text-2xl font-mono p-3 border rounded-xl text-center focus:ring-2 focus:ring-primary/20 outline-none" 
                       placeholder="0.00"
+                      data-testid={`input-expense-amount-${section.id}`}
                     />
                   </div>
                   <div>
@@ -161,6 +201,7 @@ export default function Expenses() {
                       id={`expense-desc-${section.id}`}
                       className="w-full text-sm p-3 border rounded-xl h-24 focus:ring-2 focus:ring-primary/20 outline-none resize-none"
                       placeholder="اكتب التفاصيل هنا لتوثيقها في السجل..."
+                      data-testid={`input-expense-desc-${section.id}`}
                     />
                   </div>
                 </div>
@@ -179,15 +220,19 @@ export default function Expenses() {
                   }}
                   disabled={createMutation.isPending}
                   className={cn("w-full py-3 rounded-xl font-bold transition-colors disabled:opacity-50", section.id === 'zakat' ? 'bg-primary text-primary-foreground' : 'bg-primary/90 text-white')}
+                  data-testid={`button-submit-expense-${section.id}`}
                 >
-                  اعتماد العملية وتوثيقها
+                  {createMutation.isPending ? (
+                    <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto" />
+                  ) : (
+                    "اعتماد العملية وتوثيقها"
+                  )}
                 </button>
               </DialogContent>
             </Dialog>
           ))}
         </div>
 
-        {/* Expense History */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="font-bold text-lg text-primary font-heading">سجل المصروفات</h3>
@@ -206,6 +251,7 @@ export default function Expenses() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-card border border-border/60 rounded-2xl p-4 shadow-sm"
+                  data-testid={`card-expense-record-${expense.id}`}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
@@ -237,6 +283,7 @@ export default function Expenses() {
                     onClick={() => deleteMutation.mutate(expense.id)}
                     disabled={deleteMutation.isPending}
                     className="w-full text-[10px] text-muted-foreground flex items-center justify-center gap-1 pt-3 mt-3 border-t border-border/40 hover:text-red-500 transition-colors disabled:opacity-50"
+                    data-testid={`button-delete-expense-${expense.id}`}
                   >
                     <Trash2 className="w-3 h-3" /> حذف السجل
                   </button>
