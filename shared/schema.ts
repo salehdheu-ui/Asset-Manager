@@ -102,6 +102,7 @@ export const fundAdjustments = pgTable("fund_adjustments", {
   type: text("type").notNull(), // 'deposit' | 'withdrawal'
   amount: decimal("amount", { precision: 12, scale: 3 }).notNull(),
   description: text("description"),
+  memberId: varchar("member_id"),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: varchar("created_by"),
 });

@@ -197,7 +197,7 @@ export async function getFundAdjustments(): Promise<FundAdjustment[]> {
   return res.json();
 }
 
-export async function createFundAdjustment(data: { type: string; amount: string; description?: string }): Promise<FundAdjustment> {
+export async function createFundAdjustment(data: { type: string; amount: string; description?: string; memberId?: string }): Promise<FundAdjustment> {
   const res = await apiRequest("POST", "/api/fund-adjustments", data);
   return res.json();
 }

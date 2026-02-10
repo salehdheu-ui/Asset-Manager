@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const [adjustType, setAdjustType] = useState<"deposit" | "withdrawal">("deposit");
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustDescription, setAdjustDescription] = useState("");
+  const [adjustMemberId, setAdjustMemberId] = useState("");
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
       toast({ title: adjustType === "deposit" ? "تم إيداع المبلغ بنجاح" : "تم سحب المبلغ بنجاح" });
       setAdjustAmount("");
       setAdjustDescription("");
+      setAdjustMemberId("");
       setAdjustDialogOpen(false);
     },
     onError: () => {
@@ -366,10 +368,26 @@ export default function AdminDashboard() {
                     type: adjustType,
                     amount: adjustAmount,
                     description: adjustDescription || undefined,
+                    memberId: adjustMemberId || undefined,
                   });
                 }
               }}
             >
+              <div className="space-y-2">
+                <label className="text-sm font-medium">العضو *</label>
+                <select
+                  value={adjustMemberId}
+                  onChange={(e) => setAdjustMemberId(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                  data-testid="select-adjust-member"
+                >
+                  <option value="">اختر العضو...</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">المبلغ (ر.ع) *</label>
                 <input
@@ -397,7 +415,7 @@ export default function AdminDashboard() {
               </div>
               <button
                 type="submit"
-                disabled={createAdjustmentMutation.isPending || !adjustAmount || Number(adjustAmount) <= 0}
+                disabled={createAdjustmentMutation.isPending || !adjustAmount || Number(adjustAmount) <= 0 || !adjustMemberId}
                 className={cn(
                   "w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-white",
                   adjustType === "deposit" ? "bg-green-600" : "bg-red-600"
@@ -444,6 +462,11 @@ export default function AdminDashboard() {
                     </span>
                     <span className="font-bold text-sm">{Number(adj.amount).toFixed(3)} ر.ع</span>
                   </div>
+                  {adj.memberId && (
+                    <p className="text-xs text-primary font-bold mt-1">
+                      {adj.type === "deposit" ? "إيداع لـ" : "سحب من"}: {getMemberName(adj.memberId)}
+                    </p>
+                  )}
                   {adj.description && (
                     <p className="text-xs text-muted-foreground mt-1">{adj.description}</p>
                   )}
