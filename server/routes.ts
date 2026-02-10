@@ -7,7 +7,7 @@ import { setupAuth, isAuthenticated, isAdmin, createDefaultAdmin } from "./auth"
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
-import { rebalanceYear, checkLoanTransaction, checkExpenseTransaction, resetYearAllocation, getAllocationForYear } from "./capital-engine";
+import { rebalanceYear, lockYearAllocation, checkLoanTransaction, checkExpenseTransaction, resetYearAllocation, getAllocationForYear } from "./capital-engine";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -402,11 +402,12 @@ export async function registerRoutes(
         totalRepayments,
         netCapital: capital,
         allocation,
+        lockedNetAssets: allocation.netAssets,
         layers: [
-          { id: "protected", name: "رأس المال المحمي", percentage: percents.protectedPercent, amount: (capital * percents.protectedPercent / 100), locked: true, used: 0, available: 0 },
-          { id: "emergency", name: "احتياطي الطوارئ", percentage: percents.emergencyPercent, amount: (capital * percents.emergencyPercent / 100), locked: true, used: allocation.emergency.used, available: allocation.emergency.available },
-          { id: "flexible", name: "رأس المال المرن", percentage: percents.flexiblePercent, amount: (capital * percents.flexiblePercent / 100), locked: false, used: allocation.flexible.used, available: allocation.flexible.available },
-          { id: "growth", name: "رأس مال النمو", percentage: percents.growthPercent, amount: (capital * percents.growthPercent / 100), locked: true, used: allocation.growth.used, available: allocation.growth.available },
+          { id: "protected", name: "رأس المال المحمي", percentage: percents.protectedPercent, amount: allocation.protected.amount, locked: true, used: 0, available: 0 },
+          { id: "emergency", name: "احتياطي الطوارئ", percentage: percents.emergencyPercent, amount: allocation.emergency.amount, locked: true, used: allocation.emergency.used, available: allocation.emergency.available },
+          { id: "flexible", name: "رأس المال المرن", percentage: percents.flexiblePercent, amount: allocation.flexible.amount, locked: false, used: allocation.flexible.used, available: allocation.flexible.available },
+          { id: "growth", name: "رأس مال النمو", percentage: percents.growthPercent, amount: allocation.growth.amount, locked: true, used: allocation.growth.used, available: allocation.growth.available },
         ]
       });
     } catch (error) {
@@ -467,6 +468,16 @@ export async function registerRoutes(
       res.json(allocation);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch allocation" });
+    }
+  });
+
+  app.post("/api/allocation/:year/lock", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const year = Number(req.params.year);
+      const allocation = await lockYearAllocation(year);
+      res.json(allocation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to lock allocation" });
     }
   });
 

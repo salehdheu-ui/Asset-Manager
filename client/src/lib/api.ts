@@ -206,6 +206,17 @@ export async function deleteFundAdjustment(id: string): Promise<void> {
   await apiRequest("DELETE", `/api/fund-adjustments/${id}`);
 }
 
+// Capital Allocation
+export async function lockYearAllocation(year: number): Promise<any> {
+  const res = await apiRequest("POST", `/api/allocation/${year}/lock`);
+  return res.json();
+}
+
+export async function resetYearAllocation(year: number): Promise<any> {
+  const res = await apiRequest("POST", `/api/allocation/${year}/reset`);
+  return res.json();
+}
+
 // System Reset
 export async function resetSystem(): Promise<void> {
   await apiRequest("POST", "/api/system/reset");

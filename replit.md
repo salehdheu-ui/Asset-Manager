@@ -4,7 +4,7 @@
 
 Family Fund OS is a mobile-first Arabic web application designed as an operating system for managing an Omani family fund. The system prioritizes wealth preservation, family harmony, and generational trust over financial returns. It provides tools for managing family contributions, loans, expenses, governance, and transparent record-keeping through an immutable trust ledger.
 
-The application follows a structured capital allocation model with four protected layers: Protected Capital (50%), Emergency Reserve (20%), Flexible Capital (20%), and Growth Capital (10%).
+The application follows a structured capital allocation model with four protected layers: Protected Capital (45%), Emergency Reserve (15%), Flexible Capital (20%), and Growth Capital (20%). Allocation amounts are locked at the beginning of each year based on total net assets across all time, and only the "used" amounts update during the year. Admin can re-lock or reset allocations from the admin dashboard.
 
 ## User Preferences
 

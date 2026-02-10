@@ -5,6 +5,7 @@ import { eq, and, sql } from "drizzle-orm";
 export interface AllocationResult {
   year: number;
   netAssets: number;
+  locked: boolean;
   protected: { amount: number; percent: number };
   emergency: { amount: number; percent: number; used: number; available: number };
   flexible: { amount: number; percent: number; used: number; available: number };
@@ -29,50 +30,25 @@ async function getPercentages() {
   };
 }
 
-async function computeNetAssetsForYear(year: number): Promise<number> {
+async function computeTotalNetAssets(): Promise<number> {
   const allContribs = await db.select().from(contributions)
-    .where(and(eq(contributions.year, year), eq(contributions.status, "approved")));
-  
+    .where(eq(contributions.status, "approved"));
   const allLoans = await db.select().from(loans)
     .where(eq(loans.status, "approved"));
-  
   const allExpenses = await db.select().from(expenses);
-
   const allAdjustments = await db.select().from(fundAdjustments);
 
   const totalContribs = allContribs.reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalLoans = allLoans.reduce((sum, l) => sum + Number(l.amount), 0);
+  const totalExpenses = allExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const totalDeposits = allAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
+  const totalWithdrawals = allAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
 
-  const yearStart = new Date(year, 0, 1);
-  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
-
-  const yearAdjustments = allAdjustments.filter(a => {
-    const d = a.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
-  });
-  const totalDeposits = yearAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
-  const totalWithdrawals = yearAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
-
-  const yearLoans = allLoans.filter(l => {
-    const d = l.approvedAt || l.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
-  });
-  const totalLoans = yearLoans.reduce((sum, l) => sum + Number(l.amount), 0);
-
-  const yearExpenses = allExpenses.filter(e => {
-    const d = e.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
-  });
-  const totalExpenses = yearExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-
-  const yearLoanIds = yearLoans.map(l => l.id);
   let totalRepayments = 0;
-  for (const loanId of yearLoanIds) {
+  for (const loan of allLoans) {
     const reps = await db.select().from(loanRepayments)
-      .where(and(eq(loanRepayments.loanId, loanId), eq(loanRepayments.status, "paid")));
-    totalRepayments += reps.filter(r => {
-      const d = r.paidAt;
-      return d && d >= yearStart && d <= yearEnd;
-    }).reduce((sum, r) => sum + Number(r.amount), 0);
+      .where(and(eq(loanRepayments.loanId, loan.id), eq(loanRepayments.status, "paid")));
+    totalRepayments += reps.reduce((sum, r) => sum + Number(r.amount), 0);
   }
 
   return Math.max(0, totalContribs + totalDeposits - totalWithdrawals - totalLoans + totalRepayments - totalExpenses);
@@ -99,11 +75,10 @@ async function computeUsedAmounts(year: number) {
   const emergencyExpenses = yearExpenses.filter(e => e.category === 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
   const generalExpenses = yearExpenses.filter(e => e.category !== 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
 
-  const yearLoanIds = yearLoans.map(l => l.id);
   let totalRepayments = 0;
-  for (const loanId of yearLoanIds) {
+  for (const loan of yearLoans) {
     const reps = await db.select().from(loanRepayments)
-      .where(and(eq(loanRepayments.loanId, loanId), eq(loanRepayments.status, "paid")));
+      .where(and(eq(loanRepayments.loanId, loan.id), eq(loanRepayments.status, "paid")));
     totalRepayments += reps.filter(r => {
       const d = r.paidAt;
       return d && d >= yearStart && d <= yearEnd;
@@ -117,9 +92,9 @@ async function computeUsedAmounts(year: number) {
   };
 }
 
-export async function rebalanceYear(year: number): Promise<AllocationResult> {
+export async function lockYearAllocation(year: number): Promise<AllocationResult> {
   const percents = await getPercentages();
-  const netAssets = await computeNetAssetsForYear(year);
+  const netAssets = await computeTotalNetAssets();
   const used = await computeUsedAmounts(year);
 
   const protectedAmt = netAssets * percents.protected / 100;
@@ -141,6 +116,7 @@ export async function rebalanceYear(year: number): Promise<AllocationResult> {
         flexibleUsed: used.flexibleUsed.toFixed(3),
         growthUsed: used.growthUsed.toFixed(3),
         emergencyUsed: used.emergencyUsed.toFixed(3),
+        lockedAt: new Date(),
       })
       .where(eq(capitalAllocations.id, existing.id));
   } else {
@@ -160,6 +136,44 @@ export async function rebalanceYear(year: number): Promise<AllocationResult> {
   return {
     year,
     netAssets,
+    locked: true,
+    protected: { amount: protectedAmt, percent: percents.protected },
+    emergency: { amount: emergencyAmt, percent: percents.emergency, used: used.emergencyUsed, available: Math.max(0, emergencyAmt - used.emergencyUsed) },
+    flexible: { amount: flexibleAmt, percent: percents.flexible, used: used.flexibleUsed, available: Math.max(0, flexibleAmt - used.flexibleUsed) },
+    growth: { amount: growthAmt, percent: percents.growth, used: used.growthUsed, available: Math.max(0, growthAmt - used.growthUsed) },
+  };
+}
+
+export async function rebalanceYear(year: number): Promise<AllocationResult> {
+  const [existing] = await db.select().from(capitalAllocations)
+    .where(eq(capitalAllocations.year, year));
+
+  if (!existing) {
+    return lockYearAllocation(year);
+  }
+
+  const used = await computeUsedAmounts(year);
+
+  await db.update(capitalAllocations)
+    .set({
+      flexibleUsed: used.flexibleUsed.toFixed(3),
+      growthUsed: used.growthUsed.toFixed(3),
+      emergencyUsed: used.emergencyUsed.toFixed(3),
+    })
+    .where(eq(capitalAllocations.id, existing.id));
+
+  const lockedNet = Number(existing.netAssets);
+  const protectedAmt = Number(existing.protectedAmount);
+  const emergencyAmt = Number(existing.emergencyAmount);
+  const flexibleAmt = Number(existing.flexibleAmount);
+  const growthAmt = Number(existing.growthAmount);
+
+  const percents = await getPercentages();
+
+  return {
+    year,
+    netAssets: lockedNet,
+    locked: true,
     protected: { amount: protectedAmt, percent: percents.protected },
     emergency: { amount: emergencyAmt, percent: percents.emergency, used: used.emergencyUsed, available: Math.max(0, emergencyAmt - used.emergencyUsed) },
     flexible: { amount: flexibleAmt, percent: percents.flexible, used: used.flexibleUsed, available: Math.max(0, flexibleAmt - used.flexibleUsed) },
@@ -174,7 +188,7 @@ export async function checkLoanTransaction(amount: number, year: number): Promis
   if (amount > available) {
     return {
       allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). يُرجى الانتظار حتى السنة القادمة أو طلب إعادة ضبط من المدير.`,
+      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
       layer: "flexible",
       available,
       requested: amount,
@@ -192,7 +206,7 @@ export async function checkExpenseTransaction(amount: number, category: string, 
     if (amount > available) {
       return {
         allowed: false,
-        reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في احتياطي الطوارئ (${available.toLocaleString()} ر.ع). يُرجى الانتظار حتى السنة القادمة أو طلب إعادة ضبط من المدير.`,
+        reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في احتياطي الطوارئ (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.emergency.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
         layer: "emergency",
         available,
         requested: amount,
@@ -205,7 +219,7 @@ export async function checkExpenseTransaction(amount: number, category: string, 
   if (amount > available) {
     return {
       allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). يُرجى الانتظار حتى السنة القادمة أو طلب إعادة ضبط من المدير.`,
+      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
       layer: "flexible",
       available,
       requested: amount,
@@ -226,7 +240,7 @@ export async function resetYearAllocation(year: number, adminId: string): Promis
     })
     .where(eq(capitalAllocations.year, year));
 
-  return rebalanceYear(year);
+  return lockYearAllocation(year);
 }
 
 export async function getAllocationForYear(year: number): Promise<AllocationResult> {
