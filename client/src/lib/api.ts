@@ -205,3 +205,8 @@ export async function createFundAdjustment(data: { type: string; amount: string;
 export async function deleteFundAdjustment(id: string): Promise<void> {
   await apiRequest("DELETE", `/api/fund-adjustments/${id}`);
 }
+
+// System Reset
+export async function resetSystem(): Promise<void> {
+  await apiRequest("POST", "/api/system/reset");
+}

@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser, getFundAdjustments, createFundAdjustment, deleteFundAdjustment } from "@/lib/api";
+import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser, getFundAdjustments, createFundAdjustment, deleteFundAdjustment, resetSystem } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff, Wallet, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff, Wallet, ArrowUpCircle, ArrowDownCircle, RotateCcw, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,8 @@ export default function AdminDashboard() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustDescription, setAdjustDescription] = useState("");
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
 
   const { data: allUsers = [], isLoading: usersLoading, error } = useQuery({
     queryKey: ["admin-users"],
@@ -142,6 +144,19 @@ export default function AdminDashboard() {
     },
     onError: () => {
       toast({ title: "فشل حذف المستخدم", variant: "destructive" });
+    },
+  });
+
+  const resetSystemMutation = useMutation({
+    mutationFn: resetSystem,
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast({ title: "تم تصفير النظام بنجاح - النظام جاهز للبدء من جديد" });
+      setResetDialogOpen(false);
+      setResetConfirmText("");
+    },
+    onError: () => {
+      toast({ title: "فشل في تصفير النظام", variant: "destructive" });
     },
   });
 
@@ -653,6 +668,71 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+
+        {/* System Reset Section */}
+        <div className="border-t border-border/40 my-2" />
+        
+        <div className="bg-red-600 text-white p-6 rounded-[2rem] relative overflow-hidden shadow-lg shadow-red-600/20">
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+              <RotateCcw className="w-8 h-8" />
+              <h2 className="text-xl font-bold">إعادة تصفير النظام</h2>
+            </div>
+            <p className="text-sm opacity-80">حذف جميع البيانات وإعادة النظام للوضع الابتدائي</p>
+          </div>
+          <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+        </div>
+
+        <Dialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
+          <DialogTrigger asChild>
+            <button
+              className="w-full bg-red-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-red-600/20"
+              data-testid="button-system-reset"
+            >
+              <AlertTriangle className="w-5 h-5" />
+              تصفير النظام بالكامل
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md font-sans" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="font-heading text-xl text-red-600 flex items-center gap-2">
+                <AlertTriangle className="w-6 h-6" />
+                تحذير: تصفير النظام
+              </DialogTitle>
+              <DialogDescription>
+                هذا الإجراء سيحذف جميع البيانات نهائياً بما فيها: الأعضاء، المساهمات، السلف، المصروفات، والإعدادات. لن يتم حذف حسابات المستخدمين.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <p className="text-sm text-red-700 font-bold mb-2">للتأكيد، اكتب "تصفير" في الحقل أدناه</p>
+                <input
+                  type="text"
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  className="w-full bg-white border border-red-300 rounded-xl px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  placeholder='اكتب "تصفير" هنا'
+                  data-testid="input-reset-confirm"
+                />
+              </div>
+              <button
+                onClick={() => resetSystemMutation.mutate()}
+                disabled={resetConfirmText !== "تصفير" || resetSystemMutation.isPending}
+                className="w-full bg-red-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                data-testid="button-confirm-reset"
+              >
+                {resetSystemMutation.isPending ? (
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <RotateCcw className="w-5 h-5" />
+                    تأكيد تصفير النظام
+                  </>
+                )}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MobileLayout>
   );

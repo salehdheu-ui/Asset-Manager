@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMemberSchema, insertContributionSchema, insertLoanSchema, insertExpenseSchema, insertFamilySettingsSchema, insertFundAdjustmentSchema } from "@shared/schema";
+import { insertMemberSchema, insertContributionSchema, insertLoanSchema, insertExpenseSchema, insertFamilySettingsSchema, insertFundAdjustmentSchema, members, contributions, loans, loanRepayments, expenses, fundAdjustments, capitalAllocations, familySettings } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, isAuthenticated, isAdmin, createDefaultAdmin } from "./auth";
 import { db } from "./db";
@@ -499,6 +499,26 @@ export async function registerRoutes(
       res.json(check);
     } catch (error) {
       res.status(500).json({ error: "Failed to check expense" });
+    }
+  });
+
+  // ============= System Reset (Admin Only) =============
+  app.post("/api/system/reset", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await db.transaction(async (tx) => {
+        await tx.delete(loanRepayments);
+        await tx.delete(loans);
+        await tx.delete(contributions);
+        await tx.delete(expenses);
+        await tx.delete(fundAdjustments);
+        await tx.delete(capitalAllocations);
+        await tx.delete(members);
+        await tx.delete(familySettings);
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("System reset error:", error);
+      res.status(500).json({ error: "فشل في إعادة تصفير النظام" });
     }
   });
 
