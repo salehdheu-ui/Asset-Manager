@@ -146,6 +146,7 @@ export const systemBackups = pgTable("system_backups", {
   isMonthEndSnapshot: boolean("is_month_end_snapshot").notNull().default(false),
   sizeBytes: integer("size_bytes"),
   createdBy: varchar("created_by"),
+  payload: jsonb("payload").$type<Record<string, unknown> | null>().default(null),
 });
 
 export const insertSystemBackupSchema = createInsertSchema(systemBackups).omit({ id: true });

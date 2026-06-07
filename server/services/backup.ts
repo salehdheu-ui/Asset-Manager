@@ -89,6 +89,7 @@ export async function createBackupSnapshot(createdBy?: string | null) {
     isMonthEndSnapshot: isMonthEndSnapshot(backupDate),
     sizeBytes: fileStats.size,
     createdBy: createdBy ?? null,
+    payload: payload as Record<string, unknown>,
   }).returning();
 
   const settings = settingsRows[0];
@@ -105,11 +106,16 @@ export async function readBackupRecord(id: string) {
     return undefined;
   }
 
-  const raw = await readFile(record.storagePath, "utf8");
-  return {
-    record,
-    payload: JSON.parse(raw),
-  };
+  if (record.payload) {
+    return { record, payload: record.payload };
+  }
+
+  try {
+    const raw = await readFile(record.storagePath, "utf8");
+    return { record, payload: JSON.parse(raw) };
+  } catch {
+    return undefined;
+  }
 }
 
 type BackupPayload = {
