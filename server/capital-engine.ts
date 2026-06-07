@@ -55,19 +55,19 @@ async function computeTotalNetAssets(): Promise<number> {
 
 async function computeUsedAmounts(year: number) {
   const yearStart = new Date(year, 0, 1);
-  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const yearEnd = new Date(year + 1, 0, 1);
 
   const allLoans = await db.select().from(loans)
     .where(eq(loans.status, "approved"));
   const yearLoans = allLoans.filter(l => {
     const d = l.approvedAt || l.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
+    return d && d >= yearStart && d < yearEnd;
   });
 
   const allExpenses = await db.select().from(expenses);
   const yearExpenses = allExpenses.filter(e => {
     const d = e.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
+    return d && d >= yearStart && d < yearEnd;
   });
 
   const loansTotal = yearLoans.reduce((sum, l) => sum + Number(l.amount), 0);
@@ -77,7 +77,7 @@ async function computeUsedAmounts(year: number) {
   const allPaidRepayments = await db.select().from(loanPayments);
   const yearLoanIds = new Set(yearLoans.map(l => l.id));
   const totalRepayments = allPaidRepayments
-    .filter(r => yearLoanIds.has(r.loanId) && r.paidAt && r.paidAt >= yearStart && r.paidAt <= yearEnd)
+    .filter(r => yearLoanIds.has(r.loanId) && r.paidAt && r.paidAt >= yearStart && r.paidAt < yearEnd)
     .reduce((sum, r) => sum + Number(r.amount), 0);
 
   return {
