@@ -179,17 +179,6 @@ export async function rebalanceYear(year: number): Promise<AllocationResult> {
 export async function checkLoanTransaction(amount: number, year: number): Promise<TransactionCheck> {
   const allocation = await rebalanceYear(year);
   const available = allocation.flexible.available;
-
-  if (amount > available) {
-    return {
-      allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-      layer: "flexible",
-      available,
-      requested: amount,
-    };
-  }
-
   return { allowed: true, layer: "flexible", available, requested: amount };
 }
 
@@ -198,29 +187,10 @@ export async function checkExpenseTransaction(amount: number, category: string, 
 
   if (category === "emergency") {
     const available = allocation.emergency.available;
-    if (amount > available) {
-      return {
-        allowed: false,
-        reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في احتياطي الطوارئ (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.emergency.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-        layer: "emergency",
-        available,
-        requested: amount,
-      };
-    }
     return { allowed: true, layer: "emergency", available, requested: amount };
   }
 
   const available = allocation.flexible.available;
-  if (amount > available) {
-    return {
-      allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-      layer: "flexible",
-      available,
-      requested: amount,
-    };
-  }
-
   return { allowed: true, layer: "flexible", available, requested: amount };
 }
 
