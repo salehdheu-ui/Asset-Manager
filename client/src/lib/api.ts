@@ -145,6 +145,11 @@ export async function applyBackupRetention(): Promise<{ kept: number; deleted: n
   return res.json();
 }
 
+export async function restoreBackup(id: string): Promise<SystemBackup> {
+  const res = await apiRequest("POST", `/api/backups/${id}/restore`, {});
+  return res.json();
+}
+
 // Dashboard
 export interface DashboardSummary {
   totalContributions: number;

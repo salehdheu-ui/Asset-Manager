@@ -112,6 +112,61 @@ export async function readBackupRecord(id: string) {
   };
 }
 
+type BackupPayload = {
+  data?: {
+    familySettings?: Array<Record<string, unknown> | null> | Record<string, unknown> | null;
+    members?: Record<string, unknown>[];
+    contributions?: Record<string, unknown>[];
+    loans?: Record<string, unknown>[];
+    loanRepayments?: Record<string, unknown>[];
+    loanPayments?: Record<string, unknown>[];
+    expenses?: Record<string, unknown>[];
+    fundAdjustments?: Record<string, unknown>[];
+    users?: Record<string, unknown>[];
+  };
+};
+
+export async function restoreBackupSnapshot(id: string) {
+  const snapshot = await readBackupRecord(id);
+  if (!snapshot) {
+    return undefined;
+  }
+
+  const payload = snapshot.payload as BackupPayload;
+  const data = payload.data ?? {};
+
+  await db.transaction(async (tx: any) => {
+    await tx.delete(loanPayments);
+    await tx.delete(loanRepayments);
+    await tx.delete(loans);
+    await tx.delete(contributions);
+    await tx.delete(expenses);
+    await tx.delete(fundAdjustments);
+    await tx.delete(members);
+    await tx.delete(users);
+    await tx.delete(familySettings);
+
+    const familySettingsRow = Array.isArray(data.familySettings)
+      ? data.familySettings[0]
+      : data.familySettings;
+
+    if (familySettingsRow && typeof familySettingsRow === "object") {
+      await tx.insert(familySettings).values(familySettingsRow as Record<string, unknown>);
+    }
+
+    if (data.members?.length) await tx.insert(members).values(data.members as never);
+    if (data.contributions?.length) await tx.insert(contributions).values(data.contributions as never);
+    if (data.loans?.length) await tx.insert(loans).values(data.loans as never);
+    if (data.loanRepayments?.length) await tx.insert(loanRepayments).values(data.loanRepayments as never);
+    if (data.loanPayments?.length) await tx.insert(loanPayments).values(data.loanPayments as never);
+    if (data.expenses?.length) await tx.insert(expenses).values(data.expenses as never);
+    if (data.fundAdjustments?.length) await tx.insert(fundAdjustments).values(data.fundAdjustments as never);
+    if (data.users?.length) await tx.insert(users).values(data.users as never);
+  });
+
+  return snapshot.record;
+}
+
 export async function applyRetentionPolicy() {
   const backups = await listBackups();
   const [settings] = await db.select().from(familySettings).limit(1);

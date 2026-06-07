@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { applyBackupRetention, createBackup, getBackups, getMembers, getSettings, updateSettings } from "@/lib/api";
+import { applyBackupRetention, createBackup, getBackups, getMembers, getSettings, restoreBackup, updateSettings } from "@/lib/api";
 import { Home, Users, ChevronLeft, Shield, Wallet, DatabaseBackup, CalendarClock, Archive } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +64,29 @@ export default function FamilySettings() {
     onError: (error) => {
       toast({
         title: "تعذر حفظ الإعدادات",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const restoreBackupMutation = useMutation<SystemBackup, Error, string>({
+    mutationFn: restoreBackup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["backups"] });
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast({ title: "تمت استعادة النسخة الاحتياطية" });
+    },
+    onError: (error) => {
+      toast({
+        title: "تعذر استعادة النسخة الاحتياطية",
         description: (error as Error).message,
         variant: "destructive",
       });
@@ -213,9 +236,24 @@ export default function FamilySettings() {
                         {new Date(backup.backupDate).toLocaleString("ar-OM")}
                       </div>
                     </div>
-                    <Badge variant="secondary">
-                      {Math.max(1, Math.round((backup.sizeBytes ?? 0) / 1024))} ك.ب
-                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge>
+                        {Math.max(1, Math.round((backup.sizeBytes ?? 0) / 1024))} ك.ب
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                        disabled={restoreBackupMutation.isPending}
+                        onClick={() => {
+                          const confirmed = window.confirm("هل تريد استعادة هذه النسخة الاحتياطية؟ سيتم استبدال البيانات الحالية.");
+                          if (!confirmed) return;
+                          restoreBackupMutation.mutate(backup.id);
+                        }}
+                      >
+                        {restoreBackupMutation.isPending ? "..." : "استعادة"}
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}

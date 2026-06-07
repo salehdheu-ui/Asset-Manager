@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { isAuthenticated, isAdmin } from "../auth";
-import { applyRetentionPolicy, createBackupSnapshot, listBackups } from "../services/backup";
+import { applyRetentionPolicy, createBackupSnapshot, listBackups, restoreBackupSnapshot } from "../services/backup";
 
 export function registerBackupRoutes(app: Express) {
   app.get("/api/backups", isAuthenticated, isAdmin, async (_req, res) => {
@@ -30,6 +30,20 @@ export function registerBackupRoutes(app: Express) {
     } catch (error) {
       console.error("Apply backup retention error:", error);
       res.status(500).json({ error: "Failed to apply backup retention" });
+    }
+  });
+
+  app.post("/api/backups/:id/restore", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const backup = await restoreBackupSnapshot(req.params.id);
+      if (!backup) {
+        return res.status(404).json({ error: "Backup not found" });
+      }
+
+      res.json(backup);
+    } catch (error) {
+      console.error("Restore backup error:", error);
+      res.status(500).json({ error: "Failed to restore backup" });
     }
   });
 }
