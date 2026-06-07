@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, stat, writeFile } from "fs/promises";
 import path from "path";
 import { db } from "../db";
-import { contributions, expenses, familySettings, fundAdjustments, loanPayments, loanRepayments, loans, members, systemBackups } from "@shared/schema";
+import { auditLogs, capitalAllocations, contributions, expenses, familySettings, fundAdjustments, loanPayments, loanRepayments, loans, members, systemBackups } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { asc, desc, eq } from "drizzle-orm";
 
@@ -41,7 +41,7 @@ export async function createBackupSnapshot(createdBy?: string | null) {
   await ensureBackupDirectory();
 
   const backupDate = new Date();
-  const [settingsRows, memberRows, contributionRows, loanRows, repaymentRows, paymentRows, expenseRows, adjustmentRows, userRows] = await Promise.all([
+  const [settingsRows, memberRows, contributionRows, loanRows, repaymentRows, paymentRows, expenseRows, adjustmentRows, userRows, auditLogRows, capitalAllocationRows] = await Promise.all([
     db.select().from(familySettings).limit(1),
     db.select().from(members).orderBy(asc(members.createdAt)),
     db.select().from(contributions).orderBy(asc(contributions.createdAt)),
@@ -62,6 +62,8 @@ export async function createBackupSnapshot(createdBy?: string | null) {
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     }).from(users).orderBy(asc(users.createdAt)),
+    db.select().from(auditLogs).orderBy(asc(auditLogs.createdAt)),
+    db.select().from(capitalAllocations).orderBy(asc(capitalAllocations.year)),
   ]);
 
   const payload = {
@@ -79,6 +81,8 @@ export async function createBackupSnapshot(createdBy?: string | null) {
       expenses: expenseRows,
       fundAdjustments: adjustmentRows,
       users: userRows,
+      auditLogs: auditLogRows,
+      capitalAllocations: capitalAllocationRows,
     },
   };
 
@@ -140,6 +144,8 @@ type BackupPayload = {
     expenses?: Record<string, unknown>[];
     fundAdjustments?: Record<string, unknown>[];
     users?: Record<string, unknown>[];
+    auditLogs?: Record<string, unknown>[];
+    capitalAllocations?: Record<string, unknown>[];
   };
 };
 
@@ -159,6 +165,8 @@ export async function restoreBackupSnapshot(id: string) {
     await tx.delete(contributions);
     await tx.delete(expenses);
     await tx.delete(fundAdjustments);
+    await tx.delete(auditLogs);
+    await tx.delete(capitalAllocations);
     await tx.delete(members);
     await tx.delete(familySettings);
 
@@ -177,6 +185,8 @@ export async function restoreBackupSnapshot(id: string) {
     if (data.loanPayments?.length) await tx.insert(loanPayments).values(data.loanPayments as never);
     if (data.expenses?.length) await tx.insert(expenses).values(data.expenses as never);
     if (data.fundAdjustments?.length) await tx.insert(fundAdjustments).values(data.fundAdjustments as never);
+    if (data.auditLogs?.length) await tx.insert(auditLogs).values(data.auditLogs as never);
+    if (data.capitalAllocations?.length) await tx.insert(capitalAllocations).values(data.capitalAllocations as never);
   });
 
   return snapshot.record;

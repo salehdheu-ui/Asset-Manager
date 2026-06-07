@@ -13,7 +13,7 @@ import {
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { db } from "./db";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Members
@@ -67,7 +67,7 @@ export interface IStorage {
   updateFamilySettings(settings: Partial<InsertFamilySettings>): Promise<FamilySettings>;
 
   // Audit Logs
-  getAuditLogs(): Promise<AuditLog[]>;
+  getAuditLogs(page?: number, limit?: number): Promise<{ data: AuditLog[]; total: number; page: number; limit: number; totalPages: number }>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 
   // System Reset
@@ -284,8 +284,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Audit Logs
-  async getAuditLogs(): Promise<AuditLog[]> {
-    return await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+  async getAuditLogs(page = 1, limit = 50): Promise<{ data: AuditLog[]; total: number; page: number; limit: number; totalPages: number }> {
+    const offset = (page - 1) * limit;
+    const [data, countResult] = await Promise.all([
+      db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(auditLogs),
+    ]);
+    const total = countResult[0]?.count ?? 0;
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {

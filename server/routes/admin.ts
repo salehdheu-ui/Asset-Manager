@@ -57,10 +57,12 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
-  app.get("/api/admin/audit-logs", isAuthenticated, isAdmin, async (_req, res) => {
+  app.get("/api/admin/audit-logs", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const logs = await storage.getAuditLogs();
-      res.json(logs);
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+      const result = await storage.getAuditLogs(page, limit);
+      res.json(result);
     } catch (error) {
       res.status(500).json({ message: "تعذر تحميل سجل التدقيق" });
     }
