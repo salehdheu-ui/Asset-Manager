@@ -143,7 +143,6 @@ export async function restoreBackupSnapshot(id: string) {
     await tx.delete(expenses);
     await tx.delete(fundAdjustments);
     await tx.delete(members);
-    await tx.delete(users);
     await tx.delete(familySettings);
 
     const familySettingsRow = Array.isArray(data.familySettings)
@@ -161,7 +160,6 @@ export async function restoreBackupSnapshot(id: string) {
     if (data.loanPayments?.length) await tx.insert(loanPayments).values(data.loanPayments as never);
     if (data.expenses?.length) await tx.insert(expenses).values(data.expenses as never);
     if (data.fundAdjustments?.length) await tx.insert(fundAdjustments).values(data.fundAdjustments as never);
-    if (data.users?.length) await tx.insert(users).values(data.users as never);
   });
 
   return snapshot.record;
