@@ -101,24 +101,11 @@ export function registerAdminRoutes(app: Express) {
   });
 
   app.delete("/api/fund-adjustments/:id", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const adjustmentId = req.params.id as string;
-      await storage.deleteFundAdjustment(adjustmentId);
-      const currentYear = new Date().getFullYear();
-      await rebalanceYear(currentYear);
-      return res.status(204).send();
-    } catch (error) {
-      return res.status(500).json({ message: "تعذر حذف العملية المباشرة" });
-    }
+    return res.status(403).json({ message: "تم تعطيل الحذف النهائي حفاظاً على البيانات" });
   });
 
   // ============= System Reset (Admin Only) =============
   app.post("/api/system/reset", isAuthenticated, isAdmin, async (_req: any, res) => {
-    try {
-      await storage.resetSystemData();
-      return res.json({ message: "تم تصفير النظام بنجاح" });
-    } catch (error) {
-      return res.status(500).json({ message: "تعذر تصفير النظام" });
-    }
+    return res.status(403).json({ message: "تم تعطيل إعادة تصفير النظام حفاظاً على البيانات" });
   });
 }
