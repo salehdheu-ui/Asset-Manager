@@ -283,7 +283,8 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
   }
 
   try {
-    const [user] = await db.select().from(users).where(eq(users.id, req.session.userId));
+    const existingUser = (req as any).user;
+    const user = existingUser ?? (await db.select().from(users).where(eq(users.id, req.session.userId)).then(rows => rows[0]));
     if (!user || user.role !== "admin") {
       return res.status(403).json({ message: "غير مسموح - صلاحيات المدير مطلوبة" });
     }

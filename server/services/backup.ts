@@ -50,7 +50,18 @@ export async function createBackupSnapshot(createdBy?: string | null) {
     db.select().from(loanPayments).orderBy(asc(loanPayments.paidAt)),
     db.select().from(expenses).orderBy(asc(expenses.createdAt)),
     db.select().from(fundAdjustments).orderBy(asc(fundAdjustments.createdAt)),
-    db.select().from(users).orderBy(asc(users.createdAt)),
+    db.select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      role: users.role,
+      memberId: users.memberId,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users).orderBy(asc(users.createdAt)),
   ]);
 
   const payload = {

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { FAMILY_MEMBERS, FamilyMember } from "@/lib/mock-data";
+import { getMembers } from "@/lib/api";
 import { Shield, ShieldAlert, User, Check, Settings2, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";

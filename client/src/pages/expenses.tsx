@@ -38,18 +38,16 @@ export default function Expenses() {
   const queryClient = useQueryClient();
   const [openDialog, setOpenDialog] = useState<string | null>(null);
 
-  if (!isAdmin) {
-    return <Redirect to="/dashboard" />;
-  }
-
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses"],
     queryFn: getExpenses,
+    enabled: isAdmin,
   });
 
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: getDashboardSummary,
+    enabled: isAdmin,
   });
 
   const createMutation = useMutation({
@@ -84,6 +82,10 @@ export default function Expenses() {
       });
     },
   });
+
+  if (!isAdmin) {
+    return <Redirect to="/dashboard" />;
+  }
 
   const flexibleLayer = summary?.layers?.find((l: any) => l.id === "flexible");
   const emergencyLayer = summary?.layers?.find((l: any) => l.id === "emergency");
