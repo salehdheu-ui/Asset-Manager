@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser, getFundAdjustments, createFundAdjustment, deleteFundAdjustment, resetSystem, lockYearAllocation, resetYearAllocation } from "@/lib/api";
+import { getAdminUsers, getMembers, updateUserRole, linkUserToMember, deleteUser, createUser, updateUserPassword, updateUser, resetSystem, lockYearAllocation, resetYearAllocation, getAuditLogs } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Edit2, Eye, EyeOff, Wallet, ArrowUpCircle, ArrowDownCircle, RotateCcw, AlertTriangle, Lock } from "lucide-react";
+import { Shield, Users, Trash2, UserCheck, Link, Crown, User as UserIcon, Plus, Key, Eye, EyeOff, RotateCcw, AlertTriangle, Lock, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -34,11 +34,6 @@ export default function AdminDashboard() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [showChangePassword, setShowChangePassword] = useState(false);
 
-  const [adjustType, setAdjustType] = useState<"deposit" | "withdrawal">("deposit");
-  const [adjustAmount, setAdjustAmount] = useState("");
-  const [adjustDescription, setAdjustDescription] = useState("");
-  const [adjustMemberId, setAdjustMemberId] = useState("");
-  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
 
@@ -54,38 +49,10 @@ export default function AdminDashboard() {
     queryFn: getMembers,
   });
 
-  const { data: adjustments = [] } = useQuery({
-    queryKey: ["fund-adjustments"],
-    queryFn: getFundAdjustments,
+  const { data: auditLogs = [], isLoading: auditLogsLoading, error: auditLogsError } = useQuery({
+    queryKey: ["audit-logs"],
+    queryFn: getAuditLogs,
     enabled: !!user,
-  });
-
-  const createAdjustmentMutation = useMutation({
-    mutationFn: createFundAdjustment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fund-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
-      toast({ title: adjustType === "deposit" ? "تم إيداع المبلغ بنجاح" : "تم سحب المبلغ بنجاح" });
-      setAdjustAmount("");
-      setAdjustDescription("");
-      setAdjustMemberId("");
-      setAdjustDialogOpen(false);
-    },
-    onError: () => {
-      toast({ title: "فشلت العملية", variant: "destructive" });
-    },
-  });
-
-  const deleteAdjustmentMutation = useMutation({
-    mutationFn: deleteFundAdjustment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fund-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
-      toast({ title: "تم حذف العملية" });
-    },
-    onError: () => {
-      toast({ title: "فشل حذف العملية", variant: "destructive" });
-    },
   });
 
   const createUserMutation = useMutation({
@@ -181,8 +148,8 @@ export default function AdminDashboard() {
       setResetDialogOpen(false);
       setResetConfirmText("");
     },
-    onError: () => {
-      toast({ title: "فشل في تصفير النظام", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "فشل في تصفير النظام", description: error?.message || "تعذر تصفير النظام", variant: "destructive" });
     },
   });
 
@@ -217,6 +184,13 @@ export default function AdminDashboard() {
   const getMemberName = (memberId: string | null) => {
     if (!memberId) return "غير مرتبط";
     return members.find(m => m.id === memberId)?.name || "غير معروف";
+  };
+
+  const getAuditActionLabel = (action: string) => {
+    if (action === "contribution_approved") return "اعتماد مساهمة";
+    if (action === "contribution_deleted") return "حذف مساهمة";
+    if (action === "settings_updated") return "تعديل الإعدادات";
+    return "عملية إدارية";
   };
 
   return (
@@ -361,178 +335,60 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Fund Adjustments Section */}
-        <div className="bg-amber-600 text-white p-6 rounded-[2rem] relative overflow-hidden shadow-lg shadow-amber-600/20">
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-2">
-              <Wallet className="w-8 h-8" />
-              <h2 className="text-xl font-bold">التحكم المباشر بالصندوق</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-bold text-lg text-primary font-heading flex items-center gap-2">
+              <History className="w-5 h-5" /> سجل التدقيق
+            </h3>
+            <span className="text-[11px] text-muted-foreground">آخر العمليات الحساسة في النظام</span>
+          </div>
+
+          {auditLogsLoading ? (
+            <div className="rounded-3xl border border-border/60 bg-card p-6 text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="text-sm font-medium text-muted-foreground">جاري تحميل سجل التدقيق...</p>
             </div>
-            <p className="text-sm opacity-80">إيداع أو سحب أي مبلغ بصلاحية مطلقة</p>
-          </div>
-          <div className="absolute right-[-20px] top-[-20px] w-40 h-40 bg-white/10 rounded-full blur-3xl" />
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => { setAdjustType("deposit"); setAdjustDialogOpen(true); }}
-            className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-green-600/20"
-            data-testid="button-fund-deposit"
-          >
-            <ArrowDownCircle className="w-5 h-5" />
-            إيداع مبلغ
-          </button>
-          <button
-            onClick={() => { setAdjustType("withdrawal"); setAdjustDialogOpen(true); }}
-            className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-red-600/20"
-            data-testid="button-fund-withdrawal"
-          >
-            <ArrowUpCircle className="w-5 h-5" />
-            سحب مبلغ
-          </button>
-        </div>
-
-        <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
-          <DialogContent className="sm:max-w-md font-sans" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="font-heading text-xl">
-                {adjustType === "deposit" ? "إيداع مبلغ للصندوق" : "سحب مبلغ من الصندوق"}
-              </DialogTitle>
-              <DialogDescription>
-                {adjustType === "deposit" ? "أدخل المبلغ المراد إضافته للصندوق" : "أدخل المبلغ المراد سحبه من الصندوق"}
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              className="py-4 space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (adjustAmount && Number(adjustAmount) > 0) {
-                  createAdjustmentMutation.mutate({
-                    type: adjustType,
-                    amount: adjustAmount,
-                    description: adjustDescription || undefined,
-                    memberId: adjustMemberId || undefined,
-                  });
-                }
-              }}
-            >
-              <div className="space-y-2">
-                <label className="text-sm font-medium">العضو *</label>
-                <select
-                  value={adjustMemberId}
-                  onChange={(e) => setAdjustMemberId(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  required
-                  data-testid="select-adjust-member"
+          ) : auditLogsError ? (
+            <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+              <History className="mx-auto mb-3 h-10 w-10 text-red-500" />
+              <p className="font-bold text-red-700">تعذر تحميل سجل التدقيق</p>
+              <p className="mt-1 text-sm text-red-600">حاول تحديث الصفحة أو إعادة المحاولة لاحقًا.</p>
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-6 text-center">
+              <p className="text-sm font-medium text-muted-foreground">لا توجد عمليات مسجلة بعد في سجل التدقيق.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {auditLogs.slice(0, 10).map((log, idx) => (
+                <motion.div
+                  key={log.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-sm"
                 >
-                  <option value="">اختر العضو...</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">المبلغ (ر.ع) *</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0.001"
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="0.000"
-                  required
-                  data-testid="input-adjust-amount"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">الوصف (اختياري)</label>
-                <input
-                  type="text"
-                  value={adjustDescription}
-                  onChange={(e) => setAdjustDescription(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="سبب العملية..."
-                  data-testid="input-adjust-description"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={createAdjustmentMutation.isPending || !adjustAmount || Number(adjustAmount) <= 0 || !adjustMemberId}
-                className={cn(
-                  "w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 text-white",
-                  adjustType === "deposit" ? "bg-green-600" : "bg-red-600"
-                )}
-                data-testid="button-submit-adjustment"
-              >
-                {createAdjustmentMutation.isPending ? (
-                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-                ) : (
-                  <>
-                    {adjustType === "deposit" ? <ArrowDownCircle className="w-5 h-5" /> : <ArrowUpCircle className="w-5 h-5" />}
-                    {adjustType === "deposit" ? "تأكيد الإيداع" : "تأكيد السحب"}
-                  </>
-                )}
-              </button>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {adjustments.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-bold text-lg text-amber-700 font-heading px-1">سجل العمليات المباشرة</h3>
-            {adjustments.map((adj, idx) => (
-              <motion.div
-                key={adj.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
-                className="bg-card border border-border/60 rounded-2xl p-4 flex items-center gap-3"
-              >
-                <div className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center",
-                  adj.type === "deposit" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                )}>
-                  {adj.type === "deposit" ? <ArrowDownCircle className="w-5 h-5" /> : <ArrowUpCircle className="w-5 h-5" />}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-0.5 rounded-full",
-                      adj.type === "deposit" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    )}>
-                      {adj.type === "deposit" ? "إيداع" : "سحب"}
-                    </span>
-                    <span className="font-bold text-sm">{Number(adj.amount).toFixed(3)} ر.ع</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                          {getAuditActionLabel(log.action)}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleString("ar-OM") : ""}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm font-bold text-foreground">{log.description}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        بواسطة: {log.actorName || "مستخدم إداري"}
+                      </p>
+                    </div>
                   </div>
-                  {adj.memberId && (
-                    <p className="text-xs text-primary font-bold mt-1">
-                      {adj.type === "deposit" ? "إيداع لـ" : "سحب من"}: {getMemberName(adj.memberId)}
-                    </p>
-                  )}
-                  {adj.description && (
-                    <p className="text-xs text-muted-foreground mt-1">{adj.description}</p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {adj.createdAt ? new Date(adj.createdAt).toLocaleDateString("ar-OM", { year: "numeric", month: "short", day: "numeric" }) : ""}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm("هل أنت متأكد من حذف هذه العملية؟")) {
-                      deleteAdjustmentMutation.mutate(adj.id);
-                    }
-                  }}
-                  disabled={deleteAdjustmentMutation.isPending}
-                  className="p-2 bg-red-100 text-red-600 rounded-xl active:scale-95 transition-transform disabled:opacity-50"
-                  data-testid={`button-delete-adjustment-${adj.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Divider */}
         <div className="border-t border-border/40 my-2" />
@@ -776,7 +632,7 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <RotateCcw className="w-5 h-5" />
-                صفّر المستخدَم {currentYear}
+                إعادة ضبط التخصيص {currentYear}
               </>
             )}
           </button>

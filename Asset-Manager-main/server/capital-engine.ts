@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { contributions, loans, expenses, familySettings, capitalAllocations, loanRepayments, fundAdjustments } from "@shared/schema";
+import { contributions, loans, expenses, familySettings, capitalAllocations, loanPayments, fundAdjustments } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface AllocationResult {
@@ -44,8 +44,7 @@ async function computeTotalNetAssets(): Promise<number> {
   const totalDeposits = allAdjustments.filter(a => a.type === 'deposit').reduce((sum, a) => sum + Number(a.amount), 0);
   const totalWithdrawals = allAdjustments.filter(a => a.type === 'withdrawal').reduce((sum, a) => sum + Number(a.amount), 0);
 
-  const allRepayments = await db.select().from(loanRepayments)
-    .where(eq(loanRepayments.status, "paid"));
+  const allRepayments = await db.select().from(loanPayments);
   const approvedLoanIds = new Set(allLoans.map(l => l.id));
   const totalRepayments = allRepayments
     .filter(r => approvedLoanIds.has(r.loanId))
@@ -56,30 +55,29 @@ async function computeTotalNetAssets(): Promise<number> {
 
 async function computeUsedAmounts(year: number) {
   const yearStart = new Date(year, 0, 1);
-  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const yearEnd = new Date(year + 1, 0, 1);
 
   const allLoans = await db.select().from(loans)
     .where(eq(loans.status, "approved"));
   const yearLoans = allLoans.filter(l => {
     const d = l.approvedAt || l.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
+    return d && d >= yearStart && d < yearEnd;
   });
 
   const allExpenses = await db.select().from(expenses);
   const yearExpenses = allExpenses.filter(e => {
     const d = e.createdAt;
-    return d && d >= yearStart && d <= yearEnd;
+    return d && d >= yearStart && d < yearEnd;
   });
 
   const loansTotal = yearLoans.reduce((sum, l) => sum + Number(l.amount), 0);
   const emergencyExpenses = yearExpenses.filter(e => e.category === 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
   const generalExpenses = yearExpenses.filter(e => e.category !== 'emergency').reduce((sum, e) => sum + Number(e.amount), 0);
 
-  const allPaidRepayments = await db.select().from(loanRepayments)
-    .where(eq(loanRepayments.status, "paid"));
+  const allPaidRepayments = await db.select().from(loanPayments);
   const yearLoanIds = new Set(yearLoans.map(l => l.id));
   const totalRepayments = allPaidRepayments
-    .filter(r => yearLoanIds.has(r.loanId) && r.paidAt && r.paidAt >= yearStart && r.paidAt <= yearEnd)
+    .filter(r => yearLoanIds.has(r.loanId) && r.paidAt && r.paidAt >= yearStart && r.paidAt < yearEnd)
     .reduce((sum, r) => sum + Number(r.amount), 0);
 
   return {
@@ -181,17 +179,6 @@ export async function rebalanceYear(year: number): Promise<AllocationResult> {
 export async function checkLoanTransaction(amount: number, year: number): Promise<TransactionCheck> {
   const allocation = await rebalanceYear(year);
   const available = allocation.flexible.available;
-
-  if (amount > available) {
-    return {
-      allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-      layer: "flexible",
-      available,
-      requested: amount,
-    };
-  }
-
   return { allowed: true, layer: "flexible", available, requested: amount };
 }
 
@@ -200,29 +187,10 @@ export async function checkExpenseTransaction(amount: number, category: string, 
 
   if (category === "emergency") {
     const available = allocation.emergency.available;
-    if (amount > available) {
-      return {
-        allowed: false,
-        reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في احتياطي الطوارئ (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.emergency.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-        layer: "emergency",
-        available,
-        requested: amount,
-      };
-    }
     return { allowed: true, layer: "emergency", available, requested: amount };
   }
 
   const available = allocation.flexible.available;
-  if (amount > available) {
-    return {
-      allowed: false,
-      reason: `المبلغ المطلوب (${amount.toLocaleString()} ر.ع) يتجاوز الحد المتاح في رأس المال المرن (${available.toLocaleString()} ر.ع). المبلغ المخصص لهذه السنة مقفل عند ${allocation.flexible.amount.toLocaleString()} ر.ع بناءً على صافي الأصول في بداية السنة.`,
-      layer: "flexible",
-      available,
-      requested: amount,
-    };
-  }
-
   return { allowed: true, layer: "flexible", available, requested: amount };
 }
 
