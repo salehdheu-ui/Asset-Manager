@@ -202,6 +202,12 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
   return res.json();
 }
 
+export async function getAuditLogsPublic(): Promise<AuditLog[]> {
+  const res = await fetch("/api/audit-logs", { credentials: "include" });
+  if (!res.ok) await parseFetchError(res);
+  return res.json();
+}
+
 export async function createUser(data: { 
   username: string; 
   password: string; 

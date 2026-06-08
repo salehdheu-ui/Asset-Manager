@@ -66,6 +66,15 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  app.get("/api/audit-logs", isAuthenticated, async (_req, res) => {
+    try {
+      const logs = await storage.getAuditLogs();
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "تعذر تحميل سجل التدقيق" });
+    }
+  });
+
   // ============= Fund Adjustments (Admin) =============
   app.get("/api/fund-adjustments", isAuthenticated, isAdmin, async (req, res) => {
     try {

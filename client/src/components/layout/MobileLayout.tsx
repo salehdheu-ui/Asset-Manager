@@ -17,7 +17,8 @@ import {
   Info,
   User,
   Shield,
-  Landmark
+  Landmark,
+  History
 } from "lucide-react";
 import pattern from "@assets/generated_images/subtle_islamic_geometric_pattern_background_texture.png";
 import logo from "@assets/generated_images/minimalist_family_fund_logo_symbol.png";
@@ -48,6 +49,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
     { href: "/profile", icon: User, label: "حسابي", desc: "إعدادات الحساب الشخصي" },
     ...(isAdmin ? [{ href: "/admin", icon: Shield, label: "الإدارة", desc: "إدارة المستخدمين والصلاحيات" }] : []),
     ...(isAdmin ? [{ href: "/fund-ops", icon: Landmark, label: "إجراءات الصندوق", desc: "سلفة مباشرة، مصروف، إيداع وارد" }] : []),
+    { href: "/audit-log", icon: History, label: "سجل التدقيق", desc: "العمليات الحساسة المسجلة" },
     { href: "/governance", icon: ShieldCheck, label: "الحوكمة", desc: "قوانين الصندوق والقرارات" },
     ...(isAdmin ? [{ href: "/settings", icon: Settings, label: "الإعدادات", desc: "تخصيص النظام" }] : []),
   ];

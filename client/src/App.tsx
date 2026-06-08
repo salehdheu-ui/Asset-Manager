@@ -19,6 +19,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import UserDashboard from "@/pages/user-dashboard";
 import FundOps from "@/pages/fund-ops";
 import MemberDetail from "@/pages/member-detail";
+import AuditLog from "@/pages/audit-log";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
   return (
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/fund-ops">{() => <AdminRoute component={FundOps} />}</Route>
       <Route path="/members/:id">{() => <ProtectedRoute component={MemberDetail} />}</Route>
       <Route path="/profile">{() => <ProtectedRoute component={UserDashboard} />}</Route>
+      <Route path="/audit-log">{() => <ProtectedRoute component={AuditLog} />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
