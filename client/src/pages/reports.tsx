@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import {
@@ -30,6 +31,7 @@ import {
   ArrowDownLeft,
   Scale,
   CircleDollarSign,
+  FileText as FileDetail,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,7 @@ import { CapitalDistributionChart, ContributionsTrendChart, MemberComparisonChar
 import { Button } from "@/components/ui/button";
 
 type TransactionType = "contribution" | "loan" | "expense";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 type TransactionItem = {
   id: string;
@@ -82,6 +85,7 @@ const getTransactionColor = (type: TransactionType) => {
 };
 
 export default function Reports() {
+  const [, setLocation] = useLocation();
   const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
   const [repayments, setRepayments] = useState<Record<string, any[]>>({});
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
@@ -620,14 +624,24 @@ export default function Reports() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        "rounded-full px-3 py-1 text-[10px] font-bold",
-                        m.netPosition >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      )}
-                    >
-                      {m.netPosition >= 0 ? "رصيد إيجابي" : "مديونية قائمة"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-3 py-1 text-[10px] font-bold",
+                          m.netPosition >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                        )}
+                      >
+                        {m.netPosition >= 0 ? "رصيد إيجابي" : "مديونية قائمة"}
+                      </span>
+                      <button
+                        onClick={() => setLocation(`/members/${m.id}`)}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="تقرير مفصل للعضو"
+                      >
+                        <FileDetail className="w-3 h-3" />
+                        تقرير مفصل
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
