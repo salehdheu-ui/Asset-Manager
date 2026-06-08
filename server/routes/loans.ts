@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { insertLoanPaymentSchema, insertLoanSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, isAdmin } from "../auth";
-import { rebalanceYear, checkLoanTransaction } from "../capital-engine";
+import { rebalanceYear } from "../capital-engine";
 
 export function registerLoanRoutes(app: Express) {
   app.get("/api/loans", isAuthenticated, async (req: any, res) => {
@@ -36,17 +36,7 @@ export function registerLoanRoutes(app: Express) {
           return res.status(403).json({ error: "اعتماد السلفة مباشرة متاح للإدارة فقط" });
         }
 
-        const currentYear = new Date().getFullYear();
-        const check = await checkLoanTransaction(Number(data.amount), currentYear);
-        if (!check.allowed) {
-          return res.status(403).json({
-            error: check.reason,
-            layer: check.layer,
-            available: check.available,
-            requested: check.requested,
-          });
         }
-      }
 
       const loan = await storage.createLoan(data);
 
@@ -100,16 +90,6 @@ export function registerLoanRoutes(app: Express) {
         const existingLoan = await storage.getLoans().then(ls => ls.find(l => l.id === loanId));
         if (!existingLoan) {
           return res.status(404).json({ error: "Loan not found" });
-        }
-        const approvalYear = new Date().getFullYear();
-        const check = await checkLoanTransaction(Number(existingLoan.amount), approvalYear);
-        if (!check.allowed) {
-          return res.status(403).json({
-            error: check.reason,
-            layer: check.layer,
-            available: check.available,
-            requested: check.requested
-          });
         }
       }
 
