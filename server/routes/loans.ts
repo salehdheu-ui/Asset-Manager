@@ -6,6 +6,7 @@ import { isAuthenticated, isAdmin } from "../auth";
 import { blockMembersDuringEmergency } from "../emergency";
 import { rebalanceYear } from "../capital-engine";
 import { buildRepaymentSchedule } from "@shared/finance";
+import { zodErrorResponse } from "../validation";
 
 type LoanRecord = Awaited<ReturnType<typeof storage.getLoans>>[number];
 
@@ -77,7 +78,7 @@ export function registerLoanRoutes(app: Express) {
       res.status(201).json(loan);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: error.errors });
+        res.status(400).json(zodErrorResponse(error));
       } else {
         console.error(error);
         res.status(500).json({ error: "Failed to create loan" });
@@ -304,7 +305,7 @@ export function registerLoanRoutes(app: Express) {
       res.status(201).json(payment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: error.errors });
+        res.status(400).json(zodErrorResponse(error));
       } else {
         res.status(500).json({ error: "Failed to create loan payment" });
       }
