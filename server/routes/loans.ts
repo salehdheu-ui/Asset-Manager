@@ -3,7 +3,20 @@ import { storage } from "../storage";
 import { insertLoanPaymentSchema, insertLoanSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, isAdmin } from "../auth";
+import { blockMembersDuringEmergency } from "../emergency";
 import { rebalanceYear } from "../capital-engine";
+import { buildRepaymentSchedule } from "@shared/finance";
+
+type LoanRecord = Awaited<ReturnType<typeof storage.getLoans>>[number];
+
+async function createScheduleAndRebalance(loan: LoanRecord) {
+  const repayments = buildRepaymentSchedule(loan);
+  if (repayments.length > 0) {
+    await storage.createLoanRepayments(repayments as any);
+  }
+  const approvalYear = (loan.approvedAt || loan.createdAt || new Date()).getFullYear();
+  await rebalanceYear(approvalYear);
+}
 
 export function registerLoanRoutes(app: Express) {
   app.get("/api/loans", isAuthenticated, async (req: any, res) => {
@@ -13,8 +26,9 @@ export function registerLoanRoutes(app: Express) {
         ? await storage.getLoansByMember(memberId)
         : await storage.getLoans();
 
-      if (req.user?.role !== 'admin' && req.user?.memberId) {
-        loans = loans.filter((l: any) => l.memberId === req.user.memberId);
+      if (req.user?.role !== 'admin') {
+        const ownMemberId = req.user?.memberId;
+        loans = ownMemberId ? loans.filter((l: any) => l.memberId === ownMemberId) : [];
       }
 
       res.json(loans);
@@ -23,47 +37,23 @@ export function registerLoanRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loans", isAuthenticated, async (req, res) => {
+  app.post("/api/loans", isAuthenticated, blockMembersDuringEmergency, async (req, res) => {
     try {
-      const requestedStatus = req.body?.status;
+      const isAdminUser = req.user?.role === "admin";
       const data = insertLoanSchema.parse({
         ...req.body,
-        status: req.user?.role === "admin" && requestedStatus === "approved" ? "approved" : req.body?.status,
+        // تحديد الحالة عند الإنشاء حصري للمدير — طلب العضو يبدأ معلقاً دائماً
+        status: isAdminUser ? req.body?.status : "pending",
       });
 
-      if (data.status === "approved") {
-        if (req.user?.role !== "admin") {
-          return res.status(403).json({ error: "اعتماد السلفة مباشرة متاح للإدارة فقط" });
-        }
-
-        }
+      if (!isAdminUser && data.memberId !== req.user?.memberId) {
+        return res.status(403).json({ error: "لا يمكنك طلب سلفة لعضو آخر" });
+      }
 
       const loan = await storage.createLoan(data);
 
       if (loan.status === "approved") {
-        const approvalYear = new Date().getFullYear();
-
-        if (loan.repaymentType === "scheduled" && loan.repaymentMonths && loan.repaymentMonths > 0) {
-          const monthlyAmount = Number(loan.amount) / loan.repaymentMonths;
-          const repayments = [];
-          const approvalDate = loan.approvedAt || loan.createdAt || new Date();
-
-          for (let i = 1; i <= loan.repaymentMonths; i++) {
-            const dueDate = new Date(approvalDate);
-            dueDate.setMonth(dueDate.getMonth() + i);
-            repayments.push({
-              loanId: loan.id,
-              installmentNumber: i,
-              amount: monthlyAmount.toFixed(3),
-              dueDate,
-              status: "scheduled"
-            });
-          }
-
-          await storage.createLoanRepayments(repayments as any);
-        }
-
-        await rebalanceYear(approvalYear);
+        await createScheduleAndRebalance(loan);
       }
 
       res.status(201).json(loan);
@@ -100,29 +90,7 @@ export function registerLoanRoutes(app: Express) {
 
       // إنشاء الأقساط وتحديث التخصيص المالي عند الاعتماد فقط
       if (status === 'approved') {
-        const approvalYear = (loan.approvedAt || new Date()).getFullYear();
-
-        // إنشاء جدول أقساط السداد
-        if (loan.repaymentType === 'scheduled' && loan.repaymentMonths && loan.repaymentMonths > 0) {
-          const monthlyAmount = Number(loan.amount) / loan.repaymentMonths;
-          const repayments = [];
-          const approvalDate = loan.approvedAt || new Date();
-
-          for (let i = 1; i <= loan.repaymentMonths; i++) {
-            const dueDate = new Date(approvalDate);
-            dueDate.setMonth(dueDate.getMonth() + i);
-            repayments.push({
-              loanId: loan.id,
-              installmentNumber: i,
-              amount: monthlyAmount.toFixed(3),
-              dueDate,
-              status: "scheduled"
-            });
-          }
-          await storage.createLoanRepayments(repayments as any);
-        }
-
-        await rebalanceYear(approvalYear);
+        await createScheduleAndRebalance(loan);
       }
 
       res.json(loan);
@@ -140,10 +108,13 @@ export function registerLoanRoutes(app: Express) {
     try {
       const loanId = req.params.id as string;
       // التحقق من ملكية السلفة أو صلاحية المدير
-      if (req.user?.role !== 'admin' && req.user?.memberId) {
+      if (req.user?.role !== 'admin') {
         const allLoans = await storage.getLoans();
         const loan = allLoans.find(l => l.id === loanId);
-        if (loan && loan.memberId !== req.user.memberId) {
+        if (!loan) {
+          return res.status(404).json({ error: "السلفة غير موجودة" });
+        }
+        if (!req.user?.memberId || loan.memberId !== req.user.memberId) {
           return res.status(403).json({ error: "غير مسموح بعرض أقساط سلفة عضو آخر" });
         }
       }
@@ -178,10 +149,13 @@ export function registerLoanRoutes(app: Express) {
   app.get("/api/loans/:id/payments", isAuthenticated, async (req: any, res) => {
     try {
       const loanId = req.params.id as string;
-      if (req.user?.role !== 'admin' && req.user?.memberId) {
+      if (req.user?.role !== 'admin') {
         const allLoans = await storage.getLoans();
         const loan = allLoans.find(l => l.id === loanId);
-        if (loan && loan.memberId !== req.user.memberId) {
+        if (!loan) {
+          return res.status(404).json({ error: "السلفة غير موجودة" });
+        }
+        if (!req.user?.memberId || loan.memberId !== req.user.memberId) {
           return res.status(403).json({ error: "غير مسموح بعرض سداد سلفة عضو آخر" });
         }
       }

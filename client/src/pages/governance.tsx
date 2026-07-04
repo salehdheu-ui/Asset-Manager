@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { getMembers } from "@/lib/api";
-import { Shield, ShieldAlert, User, Check, Settings2, Info } from "lucide-react";
+import { getMembers, getSettings, setEmergencyMode, assignCustodian } from "@/lib/api";
+import { Shield, ShieldAlert, User, Check, Settings2, Info, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -13,12 +13,69 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Governance() {
   const { user } = useAuth();
   const [activeRole, setActiveRole] = useState<'guardian' | 'custodian' | 'member'>(user?.role === 'admin' ? 'guardian' : 'member');
   const isGuardian = activeRole === 'guardian';
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [custodianDialogOpen, setCustodianDialogOpen] = useState(false);
+  const [emergencyConfirmOpen, setEmergencyConfirmOpen] = useState(false);
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["members"],
+    queryFn: getMembers,
+    enabled: isGuardian,
+  });
+
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: getSettings,
+  });
+  const emergencyActive = settings?.emergencyMode ?? false;
+
+  const emergencyMutation = useMutation({
+    mutationFn: setEmergencyMode,
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      setEmergencyConfirmOpen(false);
+      toast({
+        title: enabled ? "تم تفعيل وضع الطوارئ" : "تم إلغاء وضع الطوارئ",
+        description: enabled
+          ? "جُمّدت العمليات المالية للأعضاء مؤقتاً"
+          : "عادت العمليات المالية للعمل بشكل طبيعي",
+      });
+    },
+    onError: (error) => {
+      toast({ title: "حدث خطأ", description: (error as Error)?.message, variant: "destructive" });
+    },
+  });
+
+  const custodianMutation = useMutation({
+    mutationFn: assignCustodian,
+    onSuccess: (member) => {
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      setCustodianDialogOpen(false);
+      toast({ title: "تم تعيين الأمين بنجاح", description: `أصبح ${member.name} أمين الصندوق الجديد` });
+    },
+    onError: (error) => {
+      toast({ title: "تعذر تعيين الأمين", description: (error as Error)?.message, variant: "destructive" });
+    },
+  });
 
   const guardianPowers = [
     "تعيين أو عزل أمين الصندوق",
@@ -80,13 +137,32 @@ export default function Governance() {
                 ))}
               </div>
 
+              {/* Emergency Mode Banner */}
+              {emergencyActive && (
+                <div className="bg-destructive/10 border border-destructive/30 p-4 rounded-2xl flex items-center gap-3" data-testid="banner-emergency">
+                  <ShieldAlert className="w-5 h-5 text-destructive shrink-0 animate-pulse" />
+                  <p className="text-xs text-destructive font-bold leading-relaxed">
+                    وضع الطوارئ مفعّل — طلبات السلف والمساهمات الجديدة من الأعضاء مجمّدة مؤقتاً.
+                  </p>
+                </div>
+              )}
+
               {/* Critical Actions */}
               <div className="grid grid-cols-2 gap-4 mt-6">
-                <button className="bg-destructive/10 text-destructive border border-destructive/20 py-4 rounded-2xl flex flex-col items-center gap-2 hover:bg-destructive/20 transition-colors">
-                  <ShieldAlert className="w-6 h-6" />
-                  <span className="text-xs font-bold">وضع الطوارئ</span>
+                <button
+                  onClick={() => setEmergencyConfirmOpen(true)}
+                  data-testid="button-emergency-mode"
+                  className={cn(
+                    "py-4 rounded-2xl flex flex-col items-center gap-2 transition-colors border",
+                    emergencyActive
+                      ? "bg-destructive text-destructive-foreground border-destructive shadow-lg"
+                      : "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20"
+                  )}
+                >
+                  <ShieldAlert className={cn("w-6 h-6", emergencyActive && "animate-pulse")} />
+                  <span className="text-xs font-bold">{emergencyActive ? "إلغاء وضع الطوارئ" : "وضع الطوارئ"}</span>
                 </button>
-                <Dialog>
+                <Dialog open={custodianDialogOpen} onOpenChange={setCustodianDialogOpen}>
                   <DialogTrigger asChild>
                     <button className="bg-primary text-primary-foreground py-4 rounded-2xl flex flex-col items-center gap-2 hover:bg-primary/90 transition-colors shadow-lg">
                       <User className="w-6 h-6" />
@@ -101,16 +177,59 @@ export default function Governance() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-3">
-                      {FAMILY_MEMBERS.filter(m => m.role !== 'guardian').map(m => (
-                        <button key={m.id} className="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-muted/50 transition-colors">
+                      {members.filter(m => m.role !== 'guardian').map(m => (
+                        <button
+                          key={m.id}
+                          disabled={custodianMutation.isPending || m.role === 'custodian'}
+                          onClick={() => custodianMutation.mutate(m.id)}
+                          className="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-muted/50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
                           <span className="font-bold">{m.name}</span>
-                          <span className="text-xs text-muted-foreground">{m.role === 'custodian' ? '(الأمين الحالي)' : ''}</span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-2">
+                            {custodianMutation.isPending && custodianMutation.variables === m.id && (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            )}
+                            {m.role === 'custodian' ? '(الأمين الحالي)' : 'تعيين'}
+                          </span>
                         </button>
                       ))}
+                      {members.filter(m => m.role !== 'guardian').length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">لا يوجد أعضاء متاحون للتعيين</p>
+                      )}
                     </div>
                   </DialogContent>
                 </Dialog>
               </div>
+
+              {/* Emergency Mode Confirmation */}
+              <AlertDialog open={emergencyConfirmOpen} onOpenChange={setEmergencyConfirmOpen}>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-heading">
+                      {emergencyActive ? "إلغاء وضع الطوارئ؟" : "تفعيل وضع الطوارئ؟"}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {emergencyActive
+                        ? "ستعود العمليات المالية (طلبات السلف والمساهمات) للعمل بشكل طبيعي لجميع الأعضاء."
+                        : "سيتم تجميد طلبات السلف والمساهمات الجديدة من الأعضاء حتى إلغاء وضع الطوارئ. ستُوثق هذه العملية في سجل التدقيق."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>تراجع</AlertDialogCancel>
+                    <AlertDialogAction
+                      data-testid="button-confirm-emergency"
+                      disabled={emergencyMutation.isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        emergencyMutation.mutate(!emergencyActive);
+                      }}
+                      className={cn(!emergencyActive && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+                    >
+                      {emergencyMutation.isPending ? "جارٍ التنفيذ..." : emergencyActive ? "إلغاء التفعيل" : "تفعيل الآن"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </motion.div>
           )}
         </AnimatePresence>

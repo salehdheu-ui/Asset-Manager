@@ -129,6 +129,16 @@ export async function updateSettings(data: Partial<FamilySettings>): Promise<Fam
   return res.json();
 }
 
+export async function setEmergencyMode(enabled: boolean): Promise<FamilySettings> {
+  const res = await apiRequest("POST", "/api/settings/emergency", { enabled });
+  return res.json();
+}
+
+export async function assignCustodian(memberId: string): Promise<Member> {
+  const res = await apiRequest("POST", `/api/members/${memberId}/assign-custodian`, {});
+  return res.json();
+}
+
 export async function getBackups(): Promise<SystemBackup[]> {
   const res = await fetch("/api/backups", { credentials: "include" });
   if (!res.ok) await parseFetchError(res);

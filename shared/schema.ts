@@ -123,6 +123,7 @@ export const familySettings = pgTable("family_settings", {
   emergencyPercent: integer("emergency_percent").notNull().default(15),
   flexiblePercent: integer("flexible_percent").notNull().default(20),
   growthPercent: integer("growth_percent").notNull().default(20),
+  emergencyMode: boolean("emergency_mode").notNull().default(false),
   backupEnabled: boolean("backup_enabled").notNull().default(false),
   backupKeepDays: integer("backup_keep_days").notNull().default(7),
   backupKeepWeeksPerMonth: integer("backup_keep_weeks_per_month").notNull().default(4),

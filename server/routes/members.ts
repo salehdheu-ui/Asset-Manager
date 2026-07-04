@@ -8,8 +8,9 @@ export function registerMemberRoutes(app: Express) {
   app.get("/api/members", isAuthenticated, async (req: any, res) => {
     try {
       const members = await storage.getMembers();
-      if (req.user?.role !== 'admin' && req.user?.memberId) {
-        return res.json(members.filter(m => m.id === req.user.memberId));
+      if (req.user?.role !== 'admin') {
+        const ownMemberId = req.user?.memberId;
+        return res.json(ownMemberId ? members.filter(m => m.id === ownMemberId) : []);
       }
       res.json(members);
     } catch (error) {
@@ -28,6 +29,52 @@ export function registerMemberRoutes(app: Express) {
       } else {
         res.status(500).json({ error: "Failed to create member" });
       }
+    }
+  });
+
+  app.post("/api/members/:id/assign-custodian", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const memberId = req.params.id as string;
+      const allMembers = await storage.getMembers();
+      const target = allMembers.find(m => m.id === memberId);
+
+      if (!target) {
+        return res.status(404).json({ message: "العضو غير موجود" });
+      }
+      if (target.role === "guardian") {
+        return res.status(400).json({ message: "لا يمكن تعيين الوصي أميناً للصندوق" });
+      }
+      if (target.role === "custodian") {
+        return res.status(400).json({ message: "هذا العضو هو الأمين الحالي بالفعل" });
+      }
+
+      const previousCustodian = allMembers.find(m => m.role === "custodian");
+      if (previousCustodian) {
+        await storage.updateMember(previousCustodian.id, { role: "member" });
+      }
+      const updated = await storage.updateMember(memberId, { role: "custodian" });
+
+      await storage.createAuditLog({
+        action: "custodian_assigned",
+        entityType: "member",
+        entityId: memberId,
+        actorUserId: req.user?.id ?? null,
+        actorName: req.user?.username ?? req.user?.firstName ?? "مشرف",
+        description: previousCustodian
+          ? `تم تعيين ${target.name} أميناً للصندوق بدلاً من ${previousCustodian.name}`
+          : `تم تعيين ${target.name} أميناً للصندوق`,
+        metadata: {
+          newCustodianId: memberId,
+          newCustodianName: target.name,
+          previousCustodianId: previousCustodian?.id ?? null,
+          previousCustodianName: previousCustodian?.name ?? null,
+        },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Assign custodian error:", error);
+      res.status(500).json({ message: "تعذر تعيين الأمين حاليًا" });
     }
   });
 
