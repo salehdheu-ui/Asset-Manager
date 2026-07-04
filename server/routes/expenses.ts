@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, isAdmin } from "../auth";
-import { rebalanceYear, checkExpenseTransaction } from "../capital-engine";
+import { rebalanceYear } from "../capital-engine";
 
 export function registerExpenseRoutes(app: Express) {
   app.get("/api/expenses", isAuthenticated, async (req, res) => {
@@ -19,16 +19,6 @@ export function registerExpenseRoutes(app: Express) {
     try {
       const data = insertExpenseSchema.parse(req.body);
       const currentYear = new Date().getFullYear();
-
-      const check = await checkExpenseTransaction(Number(data.amount), data.category, currentYear);
-      if (!check.allowed) {
-        return res.status(403).json({ 
-          error: check.reason,
-          layer: check.layer,
-          available: check.available,
-          requested: Number(data.amount)
-        });
-      }
 
       const expense = await storage.createExpense(data);
       await rebalanceYear(currentYear);

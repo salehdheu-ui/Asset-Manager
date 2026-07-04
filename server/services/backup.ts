@@ -41,7 +41,7 @@ export async function createBackupSnapshot(createdBy?: string | null) {
   await ensureBackupDirectory();
 
   const backupDate = new Date();
-  const [settingsRows, memberRows, contributionRows, loanRows, repaymentRows, paymentRows, expenseRows, adjustmentRows, userRows, auditLogRows, capitalAllocationRows] = await Promise.all([
+  const [settingsRows, memberRows, contributionRows, loanRows, repaymentRows, paymentRows, expenseRows, adjustmentRows, allocationRows, userRows, auditLogRows] = await Promise.all([
     db.select().from(familySettings).limit(1),
     db.select().from(members).orderBy(asc(members.createdAt)),
     db.select().from(contributions).orderBy(asc(contributions.createdAt)),
@@ -50,6 +50,7 @@ export async function createBackupSnapshot(createdBy?: string | null) {
     db.select().from(loanPayments).orderBy(asc(loanPayments.paidAt)),
     db.select().from(expenses).orderBy(asc(expenses.createdAt)),
     db.select().from(fundAdjustments).orderBy(asc(fundAdjustments.createdAt)),
+    db.select().from(capitalAllocations).orderBy(asc(capitalAllocations.year)),
     db.select({
       id: users.id,
       username: users.username,
@@ -63,7 +64,6 @@ export async function createBackupSnapshot(createdBy?: string | null) {
       updatedAt: users.updatedAt,
     }).from(users).orderBy(asc(users.createdAt)),
     db.select().from(auditLogs).orderBy(asc(auditLogs.createdAt)),
-    db.select().from(capitalAllocations).orderBy(asc(capitalAllocations.year)),
   ]);
 
   const payload = {
@@ -80,9 +80,9 @@ export async function createBackupSnapshot(createdBy?: string | null) {
       loanPayments: paymentRows,
       expenses: expenseRows,
       fundAdjustments: adjustmentRows,
+      capitalAllocations: allocationRows,
       users: userRows,
       auditLogs: auditLogRows,
-      capitalAllocations: capitalAllocationRows,
     },
   };
 
@@ -143,9 +143,9 @@ type BackupPayload = {
     loanPayments?: Record<string, unknown>[];
     expenses?: Record<string, unknown>[];
     fundAdjustments?: Record<string, unknown>[];
+    capitalAllocations?: Record<string, unknown>[];
     users?: Record<string, unknown>[];
     auditLogs?: Record<string, unknown>[];
-    capitalAllocations?: Record<string, unknown>[];
   };
 };
 

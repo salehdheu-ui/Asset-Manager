@@ -65,7 +65,7 @@ export async function getLoans(): Promise<Loan[]> {
   return res.json();
 }
 
-export async function createLoan(data: { memberId: string; type: string; title: string; amount: string; description?: string; repaymentType?: string; repaymentMonths?: number | null }): Promise<Loan> {
+export async function createLoan(data: { memberId: string; type: string; title: string; amount: string; description?: string; repaymentType?: string; repaymentMonths?: number | null; status?: string }): Promise<Loan> {
   const res = await apiRequest("POST", "/api/loans", data);
   return res.json();
 }
@@ -126,6 +126,16 @@ export async function getSettings(): Promise<FamilySettings> {
 
 export async function updateSettings(data: Partial<FamilySettings>): Promise<FamilySettings> {
   const res = await apiRequest("PATCH", "/api/settings", data);
+  return res.json();
+}
+
+export async function setEmergencyMode(enabled: boolean): Promise<FamilySettings> {
+  const res = await apiRequest("POST", "/api/settings/emergency", { enabled });
+  return res.json();
+}
+
+export async function assignCustodian(memberId: string): Promise<Member> {
+  const res = await apiRequest("POST", `/api/members/${memberId}/assign-custodian`, {});
   return res.json();
 }
 
@@ -219,6 +229,12 @@ export async function getAuditLogs(page = 1, limit = 50): Promise<AuditLogsRespo
   url.searchParams.append("page", String(page));
   url.searchParams.append("limit", String(limit));
   const res = await fetch(url.toString(), { credentials: "include" });
+  if (!res.ok) await parseFetchError(res);
+  return res.json();
+}
+
+export async function getAuditLogsPublic(): Promise<AuditLog[]> {
+  const res = await fetch("/api/audit-logs", { credentials: "include" });
   if (!res.ok) await parseFetchError(res);
   return res.json();
 }

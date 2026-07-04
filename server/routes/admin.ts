@@ -14,6 +14,9 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/user/profile", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "غير مصرح" });
+      }
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user) {
         return res.status(404).json({ message: "المستخدم غير موجود" });
@@ -46,6 +49,9 @@ export function registerAdminRoutes(app: Express) {
   app.patch("/api/user/profile", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "غير مصرح" });
+      }
       const { firstName, lastName } = req.body;
       const [updated] = await db
         .update(users)
@@ -86,6 +92,15 @@ export function registerAdminRoutes(app: Express) {
       const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
       const result = await storage.getAuditLogs(page, limit);
       res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "تعذر تحميل سجل التدقيق" });
+    }
+  });
+
+  app.get("/api/audit-logs", isAuthenticated, async (_req, res) => {
+    try {
+      const logs = await storage.getAuditLogs();
+      res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "تعذر تحميل سجل التدقيق" });
     }

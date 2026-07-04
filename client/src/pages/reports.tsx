@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import {
@@ -30,13 +31,16 @@ import {
   ArrowDownLeft,
   Scale,
   CircleDollarSign,
+  FileText as FileDetail,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { downloadExcel } from "@/lib/excel";
 import { CapitalDistributionChart, ContributionsTrendChart, MemberComparisonChart } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 
 type TransactionType = "contribution" | "loan" | "expense";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 type TransactionItem = {
   id: string;
@@ -82,6 +86,7 @@ const getTransactionColor = (type: TransactionType) => {
 };
 
 export default function Reports() {
+  const [, setLocation] = useLocation();
   const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
   const [repayments, setRepayments] = useState<Record<string, any[]>>({});
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
@@ -309,11 +314,9 @@ export default function Reports() {
   const exportToExcel = async () => {
     setIsExporting(true);
     try {
-      const XLSX = await import("xlsx");
-      const workbook = XLSX.utils.book_new();
       const periodLabel = filterMonth ? `${monthNames[filterMonth - 1]} ${filterYear}` : `سنة ${filterYear}`;
 
-      const summarySheet = XLSX.utils.json_to_sheet([
+      const summaryRows = [
         { المؤشر: "الفترة", القيمة: periodLabel },
         { المؤشر: "إجمالي المساهمات", القيمة: filteredContributionsTotal },
         { المؤشر: "إجمالي السلف", القيمة: filteredLoansTotal },
@@ -331,10 +334,9 @@ export default function Reports() {
           المؤشر: "أعلى مستفيد من السلف",
           القيمة: highestBorrower ? `${highestBorrower.name} - ${formatCurrency(highestBorrower.filteredLoansTotal)}` : "لا يوجد",
         },
-      ]);
+      ];
 
-      const transactionsSheet = XLSX.utils.json_to_sheet(
-        filteredTransactions.map((t) => ({
+      const transactionRows = filteredTransactions.map((t) => ({
           التاريخ: t.date,
           النوع: getTransactionTypeLabel(t.type),
           العنوان: t.title,
@@ -343,11 +345,9 @@ export default function Reports() {
           الحالة: t.status,
           السنة: t.year,
           الشهر: t.month ? monthNames[t.month - 1] : "",
-        }))
-      );
+        }));
 
-      const membersSheet = XLSX.utils.json_to_sheet(
-        filteredMemberStats.map((m, index) => ({
+      const memberRows = filteredMemberStats.map((m, index) => ({
           الترتيب: index + 1,
           الاسم: m.name,
           الصفة: m.role === "guardian" ? "الوصي" : "عضو",
@@ -358,28 +358,20 @@ export default function Reports() {
           عدد_المساهمات: m.contributionCount,
           عدد_السلف: m.loanCount,
           صافي_المركز: m.netPosition,
-        }))
-      );
+        }));
 
-      const capitalSheet = XLSX.utils.json_to_sheet(
-        capitalDistributionData.map((item: { name: string; value: number; percentage: number }) => ({
-          البند: item.name,
-          القيمة: item.value,
-          النسبة: item.percentage,
-        }))
-      );
+      const capitalRows = capitalDistributionData.map((item: { name: string; value: number; percentage: number }) => ({
+        البند: item.name,
+        القيمة: item.value,
+        النسبة: item.percentage,
+      }));
 
-      summarySheet["!cols"] = [{ wch: 28 }, { wch: 28 }];
-      transactionsSheet["!cols"] = [{ wch: 16 }, { wch: 14 }, { wch: 30 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 14 }];
-      membersSheet["!cols"] = [{ wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 16 }];
-      capitalSheet["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 12 }];
-
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "الملخص");
-      XLSX.utils.book_append_sheet(workbook, transactionsSheet, "الحركات");
-      XLSX.utils.book_append_sheet(workbook, membersSheet, "الأعضاء");
-      XLSX.utils.book_append_sheet(workbook, capitalSheet, "رأس_المال");
-
-      XLSX.writeFile(workbook, `تقرير-الصندوق-${filterYear}${filterMonth ? `-${filterMonth}` : ""}.xlsx`);
+      await downloadExcel(`تقرير-الصندوق-${filterYear}${filterMonth ? `-${filterMonth}` : ""}.xlsx`, [
+        { name: "الملخص", rows: summaryRows, columnWidths: [28, 28] },
+        { name: "الحركات", rows: transactionRows, columnWidths: [16, 14, 30, 14, 20, 14, 10, 14] },
+        { name: "الأعضاء", rows: memberRows, columnWidths: [10, 22, 12, 16, 18, 16, 14, 14, 12, 16] },
+        { name: "رأس_المال", rows: capitalRows, columnWidths: [24, 16, 12] },
+      ]);
     } finally {
       setIsExporting(false);
     }
@@ -620,14 +612,24 @@ export default function Reports() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        "rounded-full px-3 py-1 text-[10px] font-bold",
-                        m.netPosition >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      )}
-                    >
-                      {m.netPosition >= 0 ? "رصيد إيجابي" : "مديونية قائمة"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-3 py-1 text-[10px] font-bold",
+                          m.netPosition >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                        )}
+                      >
+                        {m.netPosition >= 0 ? "رصيد إيجابي" : "مديونية قائمة"}
+                      </span>
+                      <button
+                        onClick={() => setLocation(`/members/${m.id}`)}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="تقرير مفصل للعضو"
+                      >
+                        <FileDetail className="w-3 h-3" />
+                        تقرير مفصل
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
