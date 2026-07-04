@@ -8,6 +8,7 @@ import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import { rebalanceYear } from "../capital-engine";
 import { computeDashboardSummary } from "../services/dashboard";
+import { zodErrorResponse } from "../validation";
 
 export function registerAdminRoutes(app: Express) {
   // ============= User Profile =============
@@ -133,7 +134,7 @@ export function registerAdminRoutes(app: Express) {
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         const zodError = error as z.ZodError;
-        res.status(400).json({ message: "بيانات العملية غير صحيحة", error: zodError.errors });
+        res.status(400).json(zodErrorResponse(zodError));
       } else {
         res.status(500).json({ message: "تعذر تنفيذ العملية المباشرة" });
       }
