@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { insertLoanPaymentSchema, insertLoanSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, isAdmin } from "../auth";
+import { blockMembersDuringEmergency } from "../emergency";
 import { rebalanceYear } from "../capital-engine";
 import { buildRepaymentSchedule } from "@shared/finance";
 
@@ -36,7 +37,7 @@ export function registerLoanRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loans", isAuthenticated, async (req, res) => {
+  app.post("/api/loans", isAuthenticated, blockMembersDuringEmergency, async (req, res) => {
     try {
       const isAdminUser = req.user?.role === "admin";
       const data = insertLoanSchema.parse({

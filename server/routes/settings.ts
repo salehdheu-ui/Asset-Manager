@@ -60,4 +60,30 @@ export function registerSettingsRoutes(app: Express) {
       res.status(500).json({ message: "تعذر تحديث الإعدادات حاليًا" });
     }
   });
+
+  app.post("/api/settings/emergency", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+      const settings = await storage.updateFamilySettings({ emergencyMode: enabled });
+
+      await storage.createAuditLog({
+        action: enabled ? "emergency_mode_enabled" : "emergency_mode_disabled",
+        entityType: "family_settings",
+        entityId: settings.id,
+        actorUserId: req.user?.id ?? null,
+        actorName: req.user?.username ?? req.user?.firstName ?? "مشرف",
+        description: enabled
+          ? "تم تفعيل وضع الطوارئ — جُمّدت العمليات المالية للأعضاء"
+          : "تم إلغاء وضع الطوارئ — عادت العمليات المالية للعمل",
+        metadata: { emergencyMode: enabled },
+      });
+
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "قيمة غير صحيحة لوضع الطوارئ" });
+      }
+      res.status(500).json({ message: "تعذر تغيير وضع الطوارئ حاليًا" });
+    }
+  });
 }

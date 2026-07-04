@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { insertContributionSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, isAdmin } from "../auth";
+import { blockMembersDuringEmergency } from "../emergency";
 import { rebalanceYear } from "../capital-engine";
 
 export function registerContributionRoutes(app: Express) {
@@ -33,7 +34,7 @@ export function registerContributionRoutes(app: Express) {
     }
   });
 
-  app.post("/api/contributions", isAuthenticated, async (req, res) => {
+  app.post("/api/contributions", isAuthenticated, blockMembersDuringEmergency, async (req, res) => {
     try {
       const isAdminUser = req.user?.role === "admin";
       const data = insertContributionSchema.parse({
